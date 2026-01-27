@@ -1,0 +1,17 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+sqlalchemy==2.0.35
+pydantic==2.9.2
+python-dotenv==1.0.1
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+email-validator
+bcrypt>=4.0.0
+pyotp
+qrcode
+pillow
+gpxpy==1.6.2
+fitparse==1.2.0
+psycopg2-binary==2.9.9
+

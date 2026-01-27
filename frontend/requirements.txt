@@ -1,0 +1,14 @@
+streamlit
+requests
+folium
+streamlit-folium
+plotly
+pandas
+openpyxl
+sqlalchemy>=2.0.0
+bcrypt>=4.0.0
+pyotp
+qrcode
+pillow
+gpxpy==1.6.2
+fitparse==1.2.0
