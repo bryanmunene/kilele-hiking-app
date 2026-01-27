@@ -217,6 +217,178 @@ NATURE_CSS = """
         color: #1b5e20 !important;
         text-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
+    
+    /* ===== MOBILE RESPONSIVENESS ===== */
+    
+    /* Mobile: screens smaller than 768px */
+    @media only screen and (max-width: 768px) {
+        /* Reduce padding on mobile */
+        .stApp {
+            padding: 10px !important;
+        }
+        
+        /* Hero sections - smaller on mobile */
+        .hero-section, .header-section {
+            padding: 20px 15px !important;
+            margin-bottom: 20px !important;
+            border-radius: 10px !important;
+        }
+        
+        .hero-section h1, .header-section h1 {
+            font-size: 24px !important;
+        }
+        
+        .hero-section h2, .header-section h2 {
+            font-size: 18px !important;
+        }
+        
+        /* Content cards - stack better on mobile */
+        .content-card, .feature-card, .stat-card {
+            margin-bottom: 15px !important;
+            padding: 15px !important;
+            border-radius: 10px !important;
+        }
+        
+        /* Trail/Hike cards - full width on mobile */
+        .hike-card, .trail-card, .user-card {
+            margin-bottom: 15px !important;
+            padding: 15px !important;
+            width: 100% !important;
+        }
+        
+        /* Buttons - larger tap targets */
+        button, .stButton button {
+            min-height: 44px !important;
+            font-size: 16px !important;
+            padding: 12px 20px !important;
+        }
+        
+        /* Input fields - easier to use on mobile */
+        input, textarea, select {
+            font-size: 16px !important;
+            padding: 12px !important;
+            min-height: 44px !important;
+        }
+        
+        /* Metrics - smaller on mobile */
+        .big-metric {
+            font-size: 28px !important;
+        }
+        
+        /* Columns - stack on mobile */
+        [data-testid="column"] {
+            width: 100% !important;
+            margin-bottom: 10px !important;
+        }
+        
+        /* Sidebar - easier to open on mobile */
+        [data-testid="stSidebar"] {
+            width: 280px !important;
+        }
+        
+        /* Tables - scroll horizontally on mobile */
+        table {
+            display: block !important;
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+        }
+        
+        /* Text - readable size on mobile */
+        p, div, span {
+            font-size: 15px !important;
+            line-height: 1.5 !important;
+        }
+        
+        /* Headers - proportional on mobile */
+        h1 { font-size: 24px !important; }
+        h2 { font-size: 20px !important; }
+        h3 { font-size: 18px !important; }
+        h4 { font-size: 16px !important; }
+        
+        /* Images - responsive */
+        img {
+            max-width: 100% !important;
+            height: auto !important;
+        }
+        
+        /* Expanders - easier to tap */
+        [data-testid="stExpander"] summary {
+            font-size: 16px !important;
+            padding: 15px !important;
+        }
+        
+        /* Tabs - better spacing */
+        [data-baseweb="tab"] {
+            padding: 12px 15px !important;
+            font-size: 14px !important;
+        }
+        
+        /* File uploader - mobile friendly */
+        [data-testid="stFileUploader"] {
+            font-size: 14px !important;
+        }
+        
+        /* Date/time inputs */
+        [data-baseweb="input"] {
+            font-size: 16px !important;
+        }
+        
+        /* Success/error/warning boxes */
+        .element-container div[data-testid="stNotification"] {
+            font-size: 14px !important;
+            padding: 12px !important;
+        }
+    }
+    
+    /* Tablet: 768px to 1024px */
+    @media only screen and (min-width: 768px) and (max-width: 1024px) {
+        .hero-section, .header-section {
+            padding: 30px !important;
+        }
+        
+        .content-card, .feature-card {
+            padding: 20px !important;
+        }
+        
+        /* Two-column layout on tablet */
+        [data-testid="column"] {
+            width: 48% !important;
+            display: inline-block !important;
+            margin-right: 2% !important;
+        }
+    }
+    
+    /* Touch-friendly enhancements for all mobile devices */
+    @media (hover: none) and (pointer: coarse) {
+        /* Larger tap targets */
+        button, a, [role="button"] {
+            min-height: 44px !important;
+            min-width: 44px !important;
+        }
+        
+        /* Remove hover effects on touch devices */
+        .hike-card:hover, .trail-card:hover, .user-card:hover {
+            transform: none !important;
+        }
+        
+        /* Better spacing for touch */
+        button, input, select, textarea {
+            margin: 8px 0 !important;
+        }
+    }
+    
+    /* Landscape mobile orientation */
+    @media only screen and (max-height: 500px) and (orientation: landscape) {
+        .hero-section, .header-section {
+            padding: 15px !important;
+            margin-bottom: 15px !important;
+        }
+        
+        [data-testid="stSidebar"] {
+            height: 100vh !important;
+            overflow-y: auto !important;
+        }
+    }
     </style>
 """
 
