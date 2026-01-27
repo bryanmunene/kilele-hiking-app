@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import new unified modules
 from database import init_database
-from auth import authenticate_user, register_user, verify_2fa_code, is_authenticated, get_current_user, logout as auth_logout, create_session_token
+from auth import authenticate_user, register_user, verify_2fa_code, is_authenticated, get_current_user, logout as auth_logout, create_session_token, save_token_to_browser
 from nature_theme import apply_nature_theme
 
 # Initialize database
@@ -48,6 +48,9 @@ def login(username, password, two_fa_token=None, remember_me=True):
         st.session_state.authenticated = True
         st.session_state.user = user
         st.session_state.session_token = session_token  # Save token for persistent login
+        
+        # Save token to browser localStorage (keeps Nesh logged in on refresh)
+        save_token_to_browser(session_token)
         
         return True, "Login successful!"
     except Exception as e:

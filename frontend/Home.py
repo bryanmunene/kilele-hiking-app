@@ -6,7 +6,7 @@ import plotly.express as px
 # Import new unified modules
 from database import init_database, get_db
 from services import get_all_hikes, create_bookmark
-from auth import is_authenticated, get_current_user
+from auth import is_authenticated, get_current_user, restore_session_from_storage
 from image_utils import display_image
 from nature_theme import apply_nature_theme
 from models import Hike
@@ -20,6 +20,12 @@ with get_db() as db:
     if hike_count == 0:
         import seed_database
         seed_database.seed_database()
+
+# Restore session from browser storage (keeps Nesh logged in on refresh)
+restore_session_from_storage()
+
+# Restore session from browser storage (keeps Nesh logged in on refresh)
+restore_session_from_storage()
 
 # Page configuration
 st.set_page_config(

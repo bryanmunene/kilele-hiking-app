@@ -1,8 +1,10 @@
 """
 Authentication module for Streamlit app
 Simplified auth using session state with persistent tokens
+Persists Nesh's login across browser refreshes using localStorage
 """
 import streamlit as st
+import streamlit.components.v1 as components
 import bcrypt
 import pyotp
 import secrets
@@ -226,12 +228,73 @@ def logout():
     if "session_token" in st.session_state and st.session_state.session_token:
         invalidate_token(st.session_state.session_token)
     
+    # Clear browser storage
+    components.html(
+        """
+        <script>
+            localStorage.removeItem('kilele_session_token');
+        </script>
+        """,
+        height=0,
+    )
+    
     # Clear session state
     st.session_state.authenticated = False
     st.session_state.user = None
     if "session_token" in st.session_state:
         del st.session_state.session_token
     st.session_state.clear()
+
+def save_token_to_browser(token: str):
+    """Save session token to browser localStorage for persistent login"""
+    components.html(
+        f"""
+        <script>
+            localStorage.setItem('kilele_session_token', '{token}');
+        </script>
+        """,
+        height=0,
+    )
+
+def restore_session_from_storage():
+    """
+    Restore session from browser localStorage on page load
+    Keeps Nesh logged in across page refreshes
+    """
+    # Only try to restore if not already authenticated
+    if "authenticated" not in st.session_state or not st.session_state.get("authenticated", False):
+        if "token_restore_attempted" not in st.session_state:
+            st.session_state.token_restore_attempted = False
+        
+        if not st.session_state.token_restore_attempted:
+            # JavaScript to read token from localStorage
+            token = components.html(
+                """
+                <script>
+                    const token = localStorage.getItem('kilele_session_token');
+                    if (token) {
+                        window.parent.postMessage({
+                            type: 'streamlit:setComponentValue',
+                            value: token
+                        }, '*');
+                    } else {
+                        window.parent.postMessage({
+                            type: 'streamlit:setComponentValue',
+                            value: ''
+                        }, '*');
+                    }
+                </script>
+                """,
+                height=0,
+            )
+            
+            if token and token.strip():
+                st.session_state.session_token = token
+                st.session_state.token_restore_attempted = True
+                # is_authenticated() will validate and restore the full session
+                is_authenticated()
+            else:
+                st.session_state.token_restore_attempted = True
 
 def require_auth(func):
     """Decorator to require authentication"""
