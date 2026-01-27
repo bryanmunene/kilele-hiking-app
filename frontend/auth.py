@@ -24,8 +24,15 @@ def create_session_token(user_id: int, remember_me: bool = True) -> str:
         # Generate secure random token
         token = secrets.token_urlsafe(32)
         
-        # Set expiration (30 days for remember me, 1 day otherwise)
-        expires_at = datetime.utcnow() + timedelta(days=30 if remember_me else 1)
+        # Check if user is Nesh - give permanent session
+        user = db.query(User).filter(User.id == user_id).first()
+        is_nesh = user and user.username == "Nesh"
+        
+        # Set expiration (permanent for Nesh, 30 days for remember me, 1 day otherwise)
+        if is_nesh:
+            expires_at = datetime.utcnow() + timedelta(days=3650)  # 10 years (effectively permanent)
+        else:
+            expires_at = datetime.utcnow() + timedelta(days=30 if remember_me else 1)
         
         # Save token to database
         session_token = SessionToken(
