@@ -139,6 +139,13 @@ def seed_database():
                 is_admin=True
             ),
             User(
+                username="Nesh",
+                email="nesh@kilele.ke",
+                hashed_password=hash_password("password123"),
+                full_name="Nesh",
+                is_admin=True
+            ),
+            User(
                 username="demo",
                 email="demo@kilele.ke",
                 hashed_password=hash_password("demo123"),
@@ -151,6 +158,7 @@ def seed_database():
         print("\n🎉 Database seeding completed successfully!")
         print("\n📝 Test Accounts:")
         print("   Admin: username='admin', password='admin123'")
+        print("   Nesh:  username='Nesh', password='password123' (ADMIN)")
         print("   Demo:  username='demo', password='demo123'")
 
 if __name__ == "__main__":
