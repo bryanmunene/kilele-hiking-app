@@ -4,14 +4,22 @@ from datetime import datetime
 import plotly.express as px
 
 # Import new unified modules
-from database import init_database
+from database import init_database, get_db
 from services import get_all_hikes, create_bookmark
 from auth import is_authenticated, get_current_user
 from image_utils import display_image
 from nature_theme import apply_nature_theme
+from models import Hike
 
 # Initialize database
 init_database()
+
+# Auto-seed if database is empty (for Streamlit Cloud deployment)
+with get_db() as db:
+    hike_count = db.query(Hike).count()
+    if hike_count == 0:
+        import seed_database
+        seed_database.seed_database()
 
 # Page configuration
 st.set_page_config(
