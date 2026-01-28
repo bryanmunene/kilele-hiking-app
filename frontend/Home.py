@@ -301,14 +301,14 @@ def main():
     with col_about1:
         st.markdown("""
         <div class='about-section'>
-            <h3>Your Gateway to Kenya's Natural Wonders</h3>
-            <p style='font-size: 16px; line-height: 1.8;'>
+            <h3 style='color: white;'>Your Gateway to Kenya's Natural Wonders</h3>
+            <p style='font-size: 16px; line-height: 1.8; color: white;'>
                 <strong>Kilele Explorers</strong> is Kenya's premier hiking trail discovery platform, 
                 dedicated to connecting adventure seekers with the most breathtaking trails across the country. 
                 Whether you're a seasoned mountaineer or a weekend nature enthusiast, we provide comprehensive 
                 trail information to make your hiking experience safe, memorable, and extraordinary.
             </p>
-            <p style='font-size: 16px; line-height: 1.8;'>
+            <p style='font-size: 16px; line-height: 1.8; color: white;'>
                 From the majestic peaks of Mount Kenya to the serene forests of Karura, 
                 we bring you detailed insights, GPS coordinates, difficulty ratings, and real-time tracking 
                 to ensure every adventure is perfectly planned.
