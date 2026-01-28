@@ -173,8 +173,8 @@ NATURE_CSS = """
     }
     
     .stWarning {
-        background: linear-gradient(135deg, #fff8e1 0%, #ffe082 100%) !important;
-        border-left: 5px solid #ffa726 !important;
+        background: linear-gradient(135deg, #e3f2fd 0%, #90caf9 100%) !important;
+        border-left: 5px solid #42a5f5 !important;
     }
     
     .stInfo {
