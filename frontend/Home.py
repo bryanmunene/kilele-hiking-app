@@ -295,13 +295,13 @@ def main():
         st.success(f"👋 Welcome back, **{user['username']}**! Ready for your next adventure?")
     
     # About Kilele Explorers Section
-    st.markdown("<h2 style='color: white;'>🌍 About Kilele Explorers</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: white !important;'>🌍 About Kilele Explorers</h2>", unsafe_allow_html=True)
     col_about1, col_about2 = st.columns([2, 1])
     
     with col_about1:
         st.markdown("""
         <div class='about-section'>
-            <h3 style='color: white;'>Your Gateway to Kenya's Natural Wonders</h3>
+            <h3 style='color: white !important;'>Your Gateway to Kenya's Natural Wonders</h3>
             <p style='font-size: 16px; line-height: 1.8;'>
                 <strong>Kilele Explorers</strong> is Kenya's premier hiking trail discovery platform, 
                 dedicated to connecting adventure seekers with the most breathtaking trails across the country. 
