@@ -24,9 +24,6 @@ with get_db() as db:
 # Restore session from browser storage (keeps Nesh logged in on refresh)
 restore_session_from_storage()
 
-# Restore session from browser storage (keeps Nesh logged in on refresh)
-restore_session_from_storage()
-
 # Page configuration
 st.set_page_config(
     page_title="Kilele Hiking Trails",

