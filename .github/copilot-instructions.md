@@ -23,7 +23,7 @@ Kilele Project/
 │   ├── models.py        # Duplicate models (MUST match backend)
 │   ├── services.py      # Direct DB access layer (replaces API calls)
 │   ├── auth.py          # Session-based auth with browser localStorage
-│   ├── nature_theme.py  # Reusable CSS theme (greens: #1b5e20, #2e7d32)
+│   ├── nature_theme.py  # Reusable CSS theme (blues: #1e3a5f, #2c4563, #4a6fa5 from logo)
 │   ├── image_utils.py   # Image display helpers (local/URL handling)
 │   ├── seed_database.py # Seeds frontend database
 │   └── pages/           # Streamlit pages (numbered 0-18)
@@ -190,10 +190,11 @@ if not user.get('is_admin', False):
 ## 🎨 UI/UX Conventions
 
 ### Nature Color Palette
-- **Primary Green**: `#1b5e20` (dark), `#2e7d32` (medium), `#43a047` (light)
-- **Backgrounds**: Soft gradients (`#e8f5e9` → `#f1f8e9` → `#fff8e1`)
-- **Sidebar**: Dark green gradient with white text
-- **Cards**: White with green accents, subtle shadows
+- **Primary Navy Blue**: `#1e3a5f` (dark), `#2c4563` (medium), `#4a6fa5` (compass blue)
+- **Mountain Blues**: `#5b7ea8` (light), `#64b5f6` (sky), `#90caf9` (lighter sky)
+- **Backgrounds**: Sky blue gradients (`#e3f2fd` → `#bbdefb` → `#90caf9` → `#64b5f6`)
+- **Sidebar**: Deep navy gradient with white text
+- **Cards**: White with blue accents, subtle shadows
 
 ### Streamlit Patterns
 - Use `st.columns()` for responsive layouts (mobile-friendly)
