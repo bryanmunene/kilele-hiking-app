@@ -99,8 +99,6 @@ def main():
     with col3:
         total_distance = sum(h['distance_km'] for h in hikes)
         st.metric("Total Distance", f"{total_distance:.0f} km")
-    with col4:
-        st.metric("Active Hikers", "5K+")
     
     st.markdown("---")
     

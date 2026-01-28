@@ -476,14 +476,6 @@ def main():
             </div>
         """, unsafe_allow_html=True)
     
-    with col4:
-        st.markdown("""
-            <div class='stat-box'>
-                <div class='stat-number'>5K+</div>
-                <div class='stat-label'>Active Hikers</div>
-            </div>
-        """, unsafe_allow_html=True)
-    
     st.markdown("")
     st.markdown("")
     
