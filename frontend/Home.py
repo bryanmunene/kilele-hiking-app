@@ -295,20 +295,20 @@ def main():
         st.success(f"👋 Welcome back, **{user['username']}**! Ready for your next adventure?")
     
     # About Kilele Explorers Section
-    st.markdown("## 🌍 About Kilele Explorers")
+    st.markdown("<h2 style='color: white;'>🌍 About Kilele Explorers</h2>", unsafe_allow_html=True)
     col_about1, col_about2 = st.columns([2, 1])
     
     with col_about1:
         st.markdown("""
         <div class='about-section'>
             <h3 style='color: white;'>Your Gateway to Kenya's Natural Wonders</h3>
-            <p style='font-size: 16px; line-height: 1.8; color: white;'>
+            <p style='font-size: 16px; line-height: 1.8;'>
                 <strong>Kilele Explorers</strong> is Kenya's premier hiking trail discovery platform, 
                 dedicated to connecting adventure seekers with the most breathtaking trails across the country. 
                 Whether you're a seasoned mountaineer or a weekend nature enthusiast, we provide comprehensive 
                 trail information to make your hiking experience safe, memorable, and extraordinary.
             </p>
-            <p style='font-size: 16px; line-height: 1.8; color: white;'>
+            <p style='font-size: 16px; line-height: 1.8;'>
                 From the majestic peaks of Mount Kenya to the serene forests of Karura, 
                 we bring you detailed insights, GPS coordinates, difficulty ratings, and real-time tracking 
                 to ensure every adventure is perfectly planned.
