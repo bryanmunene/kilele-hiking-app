@@ -319,7 +319,7 @@ def main():
     with col_about2:
         st.markdown("")
         st.markdown("")
-        st.info("**📍 Based in Nairobi, Kenya**\n\n🏔️ Covering 100+ trails\n\n🌟 Trusted by 5000+ hikers\n\n✅ Expert-verified routes")
+        st.info("**📍 Based in Nairobi, Kenya**\n\n🏔️ Covering 100+ trails\n\n✅ Expert-verified routes")
     
     # Why Choose Kilele Explorers
     st.markdown("## ✨ Why Choose Kilele Explorers?")
