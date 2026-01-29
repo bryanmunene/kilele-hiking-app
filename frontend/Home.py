@@ -3,12 +3,6 @@ import pandas as pd
 from datetime import datetime
 import plotly.express as px
 
-# Initialize Sentry error tracking (if configured)
-try:
-    import sentry_config
-except:
-    pass
-
 # Import new unified modules
 from database import init_database, get_db
 from services import get_all_hikes, create_bookmark

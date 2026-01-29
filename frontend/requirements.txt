@@ -16,14 +16,14 @@ fitparse==1.2.0
 # Database drivers (PostgreSQL - optional, only needed if using PostgreSQL)
 # psycopg2-binary==2.9.9  # Commented out - enable when PostgreSQL credentials are added
 
-# Image storage
-cloudinary==1.41.0
+# Image storage (Cloudinary - optional, only needed for cloud image hosting)
+# cloudinary==1.41.0  # Commented out - enable when Cloudinary credentials are added
 
 # Environment & config
 python-dotenv==1.0.1
 
-# Error tracking
-sentry-sdk==1.40.0
+# Error tracking (Sentry - optional, only needed for error monitoring)
+# sentry-sdk==1.40.0  # Commented out - enable when Sentry DSN is configured
 
-# Email (for notifications)
-sendgrid==6.11.0
+# Email (SendGrid - optional, only needed for email notifications)
+# sendgrid==6.11.0  # Commented out - enable when SendGrid API key is added
