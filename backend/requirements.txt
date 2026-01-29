@@ -13,5 +13,27 @@ qrcode
 pillow
 gpxpy==1.6.2
 fitparse==1.2.0
+
+# Database drivers
 psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Image storage
+cloudinary==1.41.0
+
+# Email services
+sendgrid==6.11.0
+aiosmtplib==3.0.1
+
+# Error tracking
+sentry-sdk[fastapi]==1.40.0
+
+# Rate limiting
+slowapi==0.1.9
+
+# Monitoring & logging
+python-json-logger==2.0.7
+
+# Security
+cryptography==42.0.0
 
