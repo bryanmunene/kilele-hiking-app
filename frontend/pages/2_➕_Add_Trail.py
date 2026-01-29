@@ -20,6 +20,23 @@ st.set_page_config(
 )
 apply_nature_theme()
 
+# Mobile-optimized form inputs
+st.markdown("""
+    <style>
+    @media (max-width: 768px) {
+        /* Form inputs stack better */
+        .stTextInput, .stTextArea, .stNumberInput, .stSelectbox {
+            margin-bottom: 18px !important;
+        }
+        /* Number inputs easier to tap */
+        .stNumberInput>div>div>input {
+            text-align: left !important;
+            font-size: 18px !important;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 def create_hike(hike_data):
     """Create a new hike via database"""
     try:

@@ -23,6 +23,29 @@ st.set_page_config(
 )
 apply_nature_theme()
 
+# Mobile responsive styles for achievements
+st.markdown("""
+    <style>
+    @media (max-width: 768px) {
+        .achievement-card {
+            width: 100% !important;
+            margin: 10px 0 !important;
+            padding: 15px !important;
+        }
+        .achievement-icon {
+            font-size: 48px !important;
+        }
+        .achievement-name {
+            font-size: 18px !important;
+        }
+        [data-testid="column"] {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # Check authentication
 if not is_authenticated():
     st.warning("⚠️ Please login to view your achievements")

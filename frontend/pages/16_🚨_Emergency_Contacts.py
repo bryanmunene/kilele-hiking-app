@@ -4,7 +4,19 @@ from nature_theme import apply_nature_theme
 
 st.set_page_config(page_title="Emergency Contacts - Kilele Explorers", page_icon="🚨", layout="wide")
 apply_nature_theme()
-
+# Mobile-friendly input styling
+st.markdown("""
+    <style>
+    @media (max-width: 768px) {
+        /* Phone number input with larger font */
+        .stTextInput input[placeholder*="Phone"],
+        .stTextInput input[placeholder*="phone"] {
+            font-size: 18px !important;
+            letter-spacing: 0.5px !important;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
 # Check if user is logged in
 if 'user' not in st.session_state:
     st.warning("⚠️ Please log in to manage emergency contacts")

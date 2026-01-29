@@ -12,3 +12,18 @@ qrcode
 pillow
 gpxpy==1.6.2
 fitparse==1.2.0
+
+# Database drivers
+psycopg2-binary==2.9.9
+
+# Image storage
+cloudinary==1.41.0
+
+# Environment & config
+python-dotenv==1.0.1
+
+# Error tracking
+sentry-sdk==1.40.0
+
+# Email (for notifications)
+sendgrid==6.11.0

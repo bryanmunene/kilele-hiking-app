@@ -44,8 +44,9 @@ def create_difficulty_color(difficulty):
 def main():
     st.title("🗺️ Trail Location Map")
     st.markdown("*Interactive map showing all hiking trails across Kenya*")
-    
-    # Fetch hikes
+        # Add mobile-responsive styles
+    st.markdown(\"\"\"\n        <style>\n        /* Mobile responsive map container */\n        iframe {\n            width: 100% !important;\n            border-radius: 10px;\n        }\n        \n        @media (max-width: 768px) {\n            iframe {\n                height: 400px !important;\n            }\n            [data-testid=\"column\"] {\n                width: 100% !important;\n                min-width: 100% !important;\n                margin-bottom: 10px !important;\n            }\n        }\n        </style>\n    \"\"\", unsafe_allow_html=True)
+        # Fetch hikes
     hikes = fetch_hikes()
     
     if not hikes:

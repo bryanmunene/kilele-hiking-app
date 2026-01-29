@@ -169,12 +169,14 @@ def get_user_sessions(user_id: int) -> List[dict]:
             "id": s.id,
             "hike_id": s.hike_id,
             "hike_name": s.hike.name if s.hike else None,
-            "date": s.date.isoformat() if s.date else None,
-            "duration_minutes": s.duration_minutes,
-            "distance_km": s.distance_km,
+            "started_at": s.started_at.isoformat() if s.started_at else None,
+            "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+            "duration_hours": s.duration_hours,
+            "distance_covered_km": s.distance_covered_km,
             "elevation_gain_m": s.elevation_gain_m,
             "notes": s.notes,
-            "gpx_data": s.gpx_data
+            "route_data": s.route_data,
+            "status": s.status
         } for s in sessions]
 
 def create_session(user_id: int, session_data: dict) -> dict:

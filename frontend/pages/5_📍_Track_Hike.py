@@ -40,7 +40,7 @@ def fetch_active_sessions():
         user = get_current_user()
         if user:
             all_sessions = get_user_sessions(user['id'])
-            return [s for s in all_sessions if not s.get('end_time')]
+            return [s for s in all_sessions if s.get('status') == 'in_progress']
         return []
     except Exception as e:
         st.error(f"Error: {e}")
@@ -49,7 +49,11 @@ def fetch_active_sessions():
 def start_hike(hike_id):
     try:
         user = get_current_user()
-        session = create_session(user['id'], hike_id)
+        session_data = {
+            "hike_id": hike_id,
+            "status": "in_progress"
+        }
+        session = create_session(user['id'], session_data)
         if session:
             return True, session
         return False, "Failed to start session"
@@ -85,9 +89,11 @@ if active_sessions:
         with col1:
             st.metric("🏔️ Trail", session.get('hike_name', 'Unknown'))
         with col2:
-            st.metric("⏱️ Duration", f"{session.get('duration_minutes', 0)} min")
+            duration = session.get('duration_hours') or 0
+            st.metric("⏱️ Duration", f"{duration:.1f} hrs")
         with col3:
-            st.metric("🚶 Distance", f"{session.get('distance_covered_km', 0):.2f} km")
+            distance = session.get('distance_covered_km') or 0
+            st.metric("🚶 Distance", f"{distance:.2f} km")
         
         st.write(f"**Started:** {session['started_at'][:16]}")
         
@@ -97,34 +103,28 @@ if active_sessions:
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    new_lat = st.number_input(
-                        "Current Latitude",
-                        value=session.get('current_latitude', 0.0),
-                        format="%.6f",
-                        step=0.000001
-                    )
                     new_distance = st.number_input(
                         "Distance Covered (km)",
-                        value=float(session.get('distance_covered_km', 0)),
+                        value=float(session.get('distance_covered_km') or 0),
+                        min_value=0.0,
+                        step=0.1
+                    )
+                    new_elevation = st.number_input(
+                        "Elevation Gain (m)",
+                        value=float(session.get('elevation_gain_m') or 0),
+                        min_value=0.0,
+                        step=10.0
+                    )
+                
+                with col2:
+                    new_duration = st.number_input(
+                        "Duration (hours)",
+                        value=float(session.get('duration_hours') or 0),
                         min_value=0.0,
                         step=0.1
                     )
                 
-                with col2:
-                    new_lon = st.number_input(
-                        "Current Longitude",
-                        value=session.get('current_longitude', 0.0),
-                        format="%.6f",
-                        step=0.000001
-                    )
-                    new_duration = st.number_input(
-                        "Duration (minutes)",
-                        value=session.get('duration_minutes', 0),
-                        min_value=0,
-                        step=1
-                    )
-                
-                notes = st.text_area("Notes", value=session.get('notes', ''))
+                notes = st.text_area("Notes", value=session.get('notes', '') or '')
                 
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -134,10 +134,9 @@ if active_sessions:
                 
                 if update_btn:
                     update_data = {
-                        "current_latitude": new_lat,
-                        "current_longitude": new_lon,
                         "distance_covered_km": new_distance,
-                        "duration_minutes": new_duration,
+                        "elevation_gain_m": new_elevation,
+                        "duration_hours": new_duration,
                         "notes": notes
                     }
                     
@@ -155,13 +154,12 @@ if active_sessions:
                     rating = st.slider("Rating", 1, 5, 3)
                     
                     complete_data = {
-                        "current_latitude": new_lat,
-                        "current_longitude": new_lon,
                         "distance_covered_km": new_distance,
-                        "duration_minutes": new_duration,
+                        "elevation_gain_m": new_elevation,
+                        "duration_hours": new_duration,
                         "notes": notes,
-                        "is_active": False,
-                        "rating": rating
+                        "status": "completed",
+                        "ended_at": datetime.utcnow()
                     }
                     
                     success, result = update_session(session['id'], complete_data)

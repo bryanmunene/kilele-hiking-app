@@ -22,9 +22,16 @@ def display_image(image_name: str, **kwargs):
     if not image_name:
         return
     
+    # Set mobile-responsive default if width not specified
+    if 'width' not in kwargs and 'use_column_width' not in kwargs:
+        kwargs['use_column_width'] = True
+    
     # Check if it's a URL
     if image_name.startswith('http'):
-        st.image(image_name, **kwargs)
+        try:
+            st.image(image_name, **kwargs)
+        except Exception:
+            st.markdown("🏔️ 📷")
         return
     
     # Remove 'static/' prefix if present

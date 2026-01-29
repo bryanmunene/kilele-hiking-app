@@ -19,7 +19,8 @@ init_database()
 # Page configuration
 st.set_page_config(page_title="Profile - Kilele", page_icon="👤", layout="wide")
 apply_nature_theme()
-
+# Mobile responsive styles for profile page
+st.markdown(\"\"\"\n    <style>\n    /* Profile picture responsive sizing */\n    @media (max-width: 768px) {\n        img {\n            max-width: 150px !important;\n            height: auto !important;\n        }\n        [data-testid=\"column\"] {\n            width: 100% !important;\n            min-width: 100% !important;\n            margin-bottom: 15px !important;\n        }\n        /* Stack profile sections vertically */\n        [data-testid=\"stHorizontalBlock\"] {\n            flex-direction: column !important;\n        }\n    }\n    </style>\n\"\"\", unsafe_allow_html=True)
 # Check authentication
 if not is_authenticated():
     st.warning("⚠️ Please login to view your profile")

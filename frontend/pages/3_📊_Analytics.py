@@ -21,6 +21,23 @@ st.set_page_config(
 )
 apply_nature_theme()
 
+# Mobile responsive styles
+st.markdown("""
+    <style>
+    @media (max-width: 768px) {
+        [data-testid="column"] {
+            width: 100% !important;
+            min-width: 100% !important;
+            margin-bottom: 10px !important;
+        }
+        /* Make charts scrollable on mobile */
+        .plotly-graph-div {
+            overflow-x: auto !important;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 @st.cache_data(ttl=300)
 def fetch_hikes():
     """Fetch all hikes from database"""

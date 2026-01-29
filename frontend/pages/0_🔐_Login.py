@@ -17,6 +17,54 @@ init_database()
 st.set_page_config(page_title="Login - Kilele", page_icon="🔐", layout="wide")
 apply_nature_theme()
 
+# Enhanced mobile input styling
+st.markdown("""
+    <style>
+    /* Login form specific mobile optimizations */
+    @media (max-width: 768px) {
+        /* Form container */
+        [data-testid="stForm"] {
+            padding: 20px !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            border-radius: 15px !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+        }
+        
+        /* Input spacing on mobile */
+        .stTextInput, .stNumberInput {
+            margin-bottom: 20px !important;
+        }
+        
+        /* Submit button larger on mobile */
+        [data-testid="stForm"] button[kind="primary"] {
+            height: 56px !important;
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            border-radius: 12px !important;
+            margin-top: 10px !important;
+        }
+        
+        /* Tab buttons */
+        [data-baseweb="tab"] {
+            font-size: 16px !important;
+            padding: 14px 20px !important;
+        }
+    }
+    
+    /* Input field icons/visual cues */
+    .stTextInput>label::before,
+    .stNumberInput>label::before {
+        content: "📝 ";
+        margin-right: 4px;
+    }
+    
+    /* Password field indicator */
+    .stTextInput>div>div>input[type="password"]::before {
+        content: "🔒";
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # Initialize session state
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -101,13 +149,27 @@ else:
                 st.session_state.needs_2fa = False
             
             with st.form("login_form"):
-                username = st.text_input("Username", placeholder="Enter your username")
-                password = st.text_input("Password", type="password", placeholder="Enter your password")
+                username = st.text_input(
+                    "👤 Username",
+                    placeholder="Enter your username",
+                    help="Your Kilele account username"
+                )
+                password = st.text_input(
+                    "🔒 Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    help="Keep your password secure"
+                )
                 
                 # Show 2FA input if needed
                 two_fa_code = None
                 if st.session_state.needs_2fa:
-                    two_fa_code = st.text_input("2FA Code", placeholder="Enter 6-digit code", max_chars=6)
+                    two_fa_code = st.text_input(
+                        "🔐 2FA Code",
+                        placeholder="Enter 6-digit code",
+                        max_chars=6,
+                        help="Check your authenticator app"
+                    )
                 
                 # Remember me checkbox
                 remember_me = st.checkbox("Remember me for 30 days", value=True)
@@ -141,11 +203,38 @@ else:
             st.write("Create an account to start your journey")
             
             with st.form("register_form"):
-                reg_username = st.text_input("Username", placeholder="Choose a username", key="reg_user")
-                reg_email = st.text_input("Email", placeholder="your.email@example.com", key="reg_email")
-                reg_fullname = st.text_input("Full Name", placeholder="Your full name", key="reg_name")
-                reg_password = st.text_input("Password", type="password", placeholder="Choose a strong password", key="reg_pass")
-                reg_confirm = st.text_input("Confirm Password", type="password", placeholder="Confirm your password", key="reg_conf")
+                reg_username = st.text_input(
+                    "👤 Username",
+                    placeholder="Choose a username",
+                    key="reg_user",
+                    help="Letters, numbers, and underscores only"
+                )
+                reg_email = st.text_input(
+                    "📧 Email",
+                    placeholder="your.email@example.com",
+                    key="reg_email",
+                    help="We'll never share your email"
+                )
+                reg_fullname = st.text_input(
+                    "✏️ Full Name",
+                    placeholder="Your full name",
+                    key="reg_name",
+                    help="Your display name on Kilele"
+                )
+                reg_password = st.text_input(
+                    "🔒 Password",
+                    type="password",
+                    placeholder="Choose a strong password",
+                    key="reg_pass",
+                    help="At least 6 characters recommended"
+                )
+                reg_confirm = st.text_input(
+                    "🔒 Confirm Password",
+                    type="password",
+                    placeholder="Confirm your password",
+                    key="reg_conf",
+                    help="Must match your password"
+                )
                 
                 submit_reg = st.form_submit_button("📝 Create Account", use_container_width=True)
                 

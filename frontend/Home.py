@@ -3,6 +3,12 @@ import pandas as pd
 from datetime import datetime
 import plotly.express as px
 
+# Initialize Sentry error tracking (if configured)
+try:
+    import sentry_config
+except:
+    pass
+
 # Import new unified modules
 from database import init_database, get_db
 from services import get_all_hikes, create_bookmark
@@ -18,8 +24,11 @@ init_database()
 with get_db() as db:
     hike_count = db.query(Hike).count()
     if hike_count == 0:
-        import seed_database
-        seed_database.seed_database()
+        try:
+            import seed_database
+            seed_database.seed_database()
+        except Exception as e:
+            st.error(f"⚠️ Error seeding database: {e}")
 
 # Restore session from browser storage (keeps Nesh logged in on refresh)
 restore_session_from_storage()
@@ -142,6 +151,27 @@ st.markdown("""
         opacity: 0.85;
         font-style: italic;
         animation: fadeIn 1s ease-out 0.4s both;
+    }
+    
+    /* Mobile optimizations for hero */
+    @media (max-width: 768px) {
+        .hero-section::before {
+            width: 200px;
+            height: 200px;
+        }
+        .hero-section::after {
+            width: 100px;
+            height: 100px;
+        }
+        .hero-title {
+            font-size: 28px !important;
+        }
+        .hero-subtitle {
+            font-size: 16px !important;
+        }
+        .hero-tagline {
+            font-size: 14px !important;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
