@@ -16,7 +16,7 @@ except:
     pass
 
 from database import engine, Base, init_database
-from routers import hikes, auth, user_activity, social, messaging, wearable
+from routers import hikes, auth, user_activity, social, messaging, wearable, strava
 from config import settings
 from rate_limiter import limiter, rate_limit_handler
 from slowapi.errors import RateLimitExceeded
@@ -77,6 +77,7 @@ app.include_router(user_activity.router, prefix="/api/v1/user", tags=["user-acti
 app.include_router(social.router, prefix="/api/v1/social", tags=["social"])
 app.include_router(messaging.router, tags=["messaging"])
 app.include_router(wearable.router, tags=["wearable"])
+app.include_router(strava.router, tags=["strava"])
 
 # Mount static files for images
 try:
@@ -93,6 +94,24 @@ async def startup_event():
     logger.info(f"☁️  Cloudinary: {'✅ Enabled' if settings.has_cloudinary else '❌ Disabled'}")
     logger.info(f"📧 Email: {'✅ Enabled' if settings.has_email else '❌ Disabled'}")
     logger.info(f"🔍 Sentry: {'✅ Enabled' if settings.has_sentry else '❌ Disabled'}")
+    
+    # Start Strava auto-sync scheduler
+    try:
+        from strava_scheduler import start_scheduler
+        start_scheduler()
+        logger.info("🟠 Strava auto-sync scheduler started")
+    except Exception as e:
+        logger.warning(f"⚠️ Strava scheduler not started: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    try:
+        from strava_scheduler import stop_scheduler
+        stop_scheduler()
+        logger.info("🟠 Strava scheduler stopped")
+    except:
+        pass
 
 @app.get("/")
 def read_root():

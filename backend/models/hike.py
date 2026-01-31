@@ -25,6 +25,7 @@ class Hike(Base):
     # Relationships
     reviews = relationship("Review", back_populates="hike")
     bookmarks = relationship("Bookmark", back_populates="hike")
+    equipment = relationship("Equipment", back_populates="hike")
 
     def to_dict(self):
         return {

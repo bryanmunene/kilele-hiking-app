@@ -7,6 +7,7 @@ from models.follow import Follow
 from models.achievement import Achievement, UserAchievement
 from models.activity import Activity
 from models.message import Message, Conversation, ConversationParticipant
+from models.equipment import Equipment, PlannedHike
 
 __all__ = [
     "Hike",
@@ -24,4 +25,6 @@ __all__ = [
     "Message",
     "Conversation",
     "ConversationParticipant",
+    "Equipment",
+    "PlannedHike",
 ]

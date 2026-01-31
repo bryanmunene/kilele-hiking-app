@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from database import Base
 
 class HikeSession(Base):
@@ -24,6 +25,9 @@ class HikeSession(Base):
     # Notes and rating
     notes = Column(String(500), nullable=True)
     rating = Column(Integer, nullable=True)  # 1-5 stars
+    
+    # Relationship to Strava activity
+    strava_activity = relationship("StravaActivity", back_populates="hike_session", uselist=False)
     
     def to_dict(self):
         return {

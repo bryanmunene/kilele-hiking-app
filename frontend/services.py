@@ -5,7 +5,8 @@ Replaces all API calls with direct database access
 from database import get_db
 from models import (
     Hike, User, Review, HikeSession, Bookmark, Achievement, 
-    UserAchievement, Follow, Conversation, ConversationParticipant, Message
+    UserAchievement, Follow, Conversation, ConversationParticipant, Message,
+    Equipment, PlannedHike
 )
 from datetime import datetime
 from typing import List, Optional
@@ -802,3 +803,150 @@ def get_trail_equipment(hike_id: int) -> List[dict]:
             "is_required": e.is_required,
             "notes": e.notes
         } for e in equipment]
+
+# ============= GEAR CATALOG SERVICES =============
+
+def get_all_gear(category: str = None) -> List[dict]:
+    """Get all gear items from catalog with optional category filter"""
+    with get_db() as db:
+        query = db.query(Equipment).filter(Equipment.hike_id.is_(None))
+        
+        if category:
+            query = query.filter(Equipment.category == category)
+        
+        gear = query.order_by(Equipment.category, Equipment.item_name).all()
+        
+        return [{
+            "id": g.id,
+            "item_name": g.item_name,
+            "category": g.category,
+            "price": g.price,
+            "vendor": g.vendor,
+            "brand": g.brand,
+            "is_required": g.is_required,
+            "notes": g.notes,
+            "image_url": g.image_url
+        } for g in gear]
+
+def get_gear_by_id(gear_id: int) -> Optional[dict]:
+    """Get a single gear item by ID"""
+    with get_db() as db:
+        gear = db.query(Equipment).filter(Equipment.id == gear_id).first()
+        if not gear:
+            return None
+        
+        return {
+            "id": gear.id,
+            "item_name": gear.item_name,
+            "category": gear.category,
+            "price": gear.price,
+            "vendor": gear.vendor,
+            "brand": gear.brand,
+            "is_required": gear.is_required,
+            "notes": gear.notes,
+            "image_url": gear.image_url
+        }
+
+def get_gear_categories() -> List[str]:
+    """Get list of unique gear categories"""
+    with get_db() as db:
+        categories = db.query(Equipment.category).filter(
+            Equipment.hike_id.is_(None)
+        ).distinct().all()
+        return [c[0] for c in categories if c[0]]
+
+# ============= PLANNED HIKE SERVICES =============
+
+def create_planned_hike(user_id: int, hike_id: int, planned_date: datetime, 
+                       transport_mode: str = "self_drive", notes: str = None,
+                       meeting_point: str = None) -> dict:
+    """Create a planned hike"""
+    with get_db() as db:
+        planned_hike = PlannedHike(
+            user_id=user_id,
+            hike_id=hike_id,
+            planned_date=planned_date,
+            transport_mode=transport_mode,
+            notes=notes,
+            meeting_point=meeting_point,
+            status="planned",
+            participants=[user_id]  # Creator is automatically a participant
+        )
+        db.add(planned_hike)
+        db.flush()
+        return {
+            "id": planned_hike.id,
+            "message": "Hike planned successfully"
+        }
+
+def get_user_planned_hikes(user_id: int, status: str = None) -> List[dict]:
+    """Get all planned hikes for a user"""
+    with get_db() as db:
+        query = db.query(PlannedHike).filter(PlannedHike.user_id == user_id)
+        
+        if status:
+            query = query.filter(PlannedHike.status == status)
+        
+        planned_hikes = query.order_by(PlannedHike.planned_date).all()
+        
+        results = []
+        for ph in planned_hikes:
+            hike = db.query(Hike).filter(Hike.id == ph.hike_id).first()
+            results.append({
+                "id": ph.id,
+                "hike_id": ph.hike_id,
+                "hike_name": hike.name if hike else "Unknown",
+                "hike_location": hike.location if hike else "Unknown",
+                "hike_latitude": hike.latitude if hike else None,
+                "hike_longitude": hike.longitude if hike else None,
+                "planned_date": ph.planned_date.isoformat(),
+                "status": ph.status,
+                "transport_mode": ph.transport_mode,
+                "meeting_point": ph.meeting_point,
+                "notes": ph.notes,
+                "participants": ph.participants,
+                "driving_directions": ph.driving_directions
+            })
+        
+        return results
+
+def update_planned_hike_status(planned_hike_id: int, status: str) -> dict:
+    """Update status of a planned hike (planned, completed, cancelled)"""
+    with get_db() as db:
+        planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).first()
+        if not planned_hike:
+            return {"error": "Planned hike not found"}
+        
+        planned_hike.status = status
+        planned_hike.updated_at = datetime.utcnow()
+        db.flush()
+        
+        return {"message": f"Hike status updated to {status}"}
+
+def add_waypoint_to_planned_hike(planned_hike_id: int, waypoint: dict) -> dict:
+    """Add a waypoint/pin to driving directions"""
+    with get_db() as db:
+        planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).first()
+        if not planned_hike:
+            return {"error": "Planned hike not found"}
+        
+        if planned_hike.driving_directions is None:
+            planned_hike.driving_directions = []
+        
+        planned_hike.driving_directions.append(waypoint)
+        planned_hike.updated_at = datetime.utcnow()
+        db.flush()
+        
+        return {"message": "Waypoint added successfully"}
+
+def delete_planned_hike(planned_hike_id: int) -> dict:
+    """Delete a planned hike"""
+    with get_db() as db:
+        planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).first()
+        if not planned_hike:
+            return {"error": "Planned hike not found"}
+        
+        db.delete(planned_hike)
+        db.flush()
+        return {"message": "Planned hike deleted"}
+

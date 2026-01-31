@@ -25,6 +25,7 @@ class User(Base):
     activities = relationship("Activity", back_populates="user")
     conversation_participants = relationship("ConversationParticipant", back_populates="user")
     sent_messages = relationship("Message", back_populates="sender")
+    strava_token = relationship("StravaToken", back_populates="user", uselist=False)
     
     def to_dict(self):
         return {

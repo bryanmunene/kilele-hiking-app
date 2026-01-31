@@ -12,6 +12,7 @@ qrcode
 pillow
 gpxpy==1.6.2
 fitparse==1.2.0
+stravalib==1.6.0
 
 # Database drivers (PostgreSQL - optional, only needed if using PostgreSQL)
 # psycopg2-binary==2.9.9  # Commented out - enable when PostgreSQL credentials are added
