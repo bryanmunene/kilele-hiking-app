@@ -285,9 +285,46 @@ class PlannedHike(Base):
     transport_mode = Column(String, default="self_drive")  # self_drive, carpool, public_transport
     meeting_point = Column(String)  # GPS coordinates or description
     driving_directions = Column(JSON)  # Waypoints for self-drive
+    price = Column(Float, default=0)  # Hike fee in KES (0 for free hikes)
+    max_participants = Column(Integer)  # Maximum number of participants
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     user = relationship("User")
     hike = relationship("Hike")
+
+class HikeRegistration(Base):
+    __tablename__ = "hike_registrations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    planned_hike_id = Column(Integer, ForeignKey("planned_hikes.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(String, default="pending")  # pending, confirmed, cancelled
+    payment_status = Column(String, default="unpaid")  # unpaid, paid, refunded
+    phone_number = Column(String)  # M-Pesa phone number
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    planned_hike = relationship("PlannedHike")
+    user = relationship("User")
+
+class Payment(Base):
+    __tablename__ = "payments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    registration_id = Column(Integer, ForeignKey("hike_registrations.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    amount = Column(Float, nullable=False)  # Amount in KES
+    phone_number = Column(String, nullable=False)  # M-Pesa phone number
+    transaction_id = Column(String)  # M-Pesa transaction ID
+    checkout_request_id = Column(String)  # STK Push request ID
+    merchant_request_id = Column(String)  # M-Pesa merchant request ID
+    status = Column(String, default="pending")  # pending, completed, failed, cancelled
+    payment_method = Column(String, default="mpesa")  # mpesa, cash, bank
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    registration = relationship("HikeRegistration")
+    user = relationship("User")

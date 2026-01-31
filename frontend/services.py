@@ -979,3 +979,166 @@ def delete_planned_hike(planned_hike_id: int) -> dict:
     except Exception:
         return {"error": "Unable to delete planned hike"}
 
+
+# Hike Registration Services
+def register_for_hike(user_id: int, planned_hike_id: int, phone_number: str) -> dict:
+    """Register a user for an upcoming hike"""
+    try:
+        from models import HikeRegistration, PlannedHike
+        with get_db() as db:
+            # Check if hike exists
+            planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).first()
+            if not planned_hike:
+                return {"error": "Hike not found"}
+            
+            # Check if already registered
+            existing = db.query(HikeRegistration).filter(
+                HikeRegistration.planned_hike_id == planned_hike_id,
+                HikeRegistration.user_id == user_id
+            ).first()
+            if existing:
+                return {"error": "Already registered for this hike"}
+            
+            # Check capacity
+            if planned_hike.max_participants:
+                current_registrations = db.query(HikeRegistration).filter(
+                    HikeRegistration.planned_hike_id == planned_hike_id,
+                    HikeRegistration.status != "cancelled"
+                ).count()
+                if current_registrations >= planned_hike.max_participants:
+                    return {"error": "Hike is full"}
+            
+            # Create registration
+            registration = HikeRegistration(
+                planned_hike_id=planned_hike_id,
+                user_id=user_id,
+                phone_number=phone_number,
+                status="confirmed" if planned_hike.price == 0 else "pending",
+                payment_status="paid" if planned_hike.price == 0 else "unpaid"
+            )
+            db.add(registration)
+            db.flush()
+            db.refresh(registration)
+            
+            return {
+                "registration_id": registration.id,
+                "status": registration.status,
+                "payment_required": planned_hike.price > 0,
+                "amount": planned_hike.price
+            }
+    except Exception as e:
+        return {"error": f"Registration failed: {str(e)}"}
+
+
+def get_user_registrations(user_id: int) -> list:
+    """Get all hike registrations for a user"""
+    try:
+        from models import HikeRegistration, PlannedHike, Hike
+        with get_db() as db:
+            registrations = db.query(HikeRegistration).filter(
+                HikeRegistration.user_id == user_id
+            ).order_by(HikeRegistration.created_at.desc()).all()
+            
+            result = []
+            for reg in registrations:
+                planned_hike = db.query(PlannedHike).filter(PlannedHike.id == reg.planned_hike_id).first()
+                if planned_hike:
+                    hike = db.query(Hike).filter(Hike.id == planned_hike.hike_id).first()
+                    result.append({
+                        "registration_id": reg.id,
+                        "hike_name": hike.name if hike else "Unknown",
+                        "hike_location": hike.location if hike else "",
+                        "planned_date": planned_hike.planned_date.isoformat(),
+                        "status": reg.status,
+                        "payment_status": reg.payment_status,
+                        "price": planned_hike.price,
+                        "created_at": reg.created_at.isoformat()
+                    })
+            
+            return result
+    except Exception:
+        return []
+
+
+def create_payment(registration_id: int, user_id: int, amount: float, phone_number: str) -> dict:
+    """Create a payment record"""
+    try:
+        from models import Payment
+        with get_db() as db:
+            payment = Payment(
+                registration_id=registration_id,
+                user_id=user_id,
+                amount=amount,
+                phone_number=phone_number,
+                status="pending"
+            )
+            db.add(payment)
+            db.flush()
+            db.refresh(payment)
+            
+            return {
+                "payment_id": payment.id,
+                "status": payment.status
+            }
+    except Exception as e:
+        return {"error": f"Payment creation failed: {str(e)}"}
+
+
+def update_payment_status(payment_id: int, status: str, transaction_id: str = None, 
+                         checkout_request_id: str = None, merchant_request_id: str = None) -> dict:
+    """Update payment status after M-Pesa response"""
+    try:
+        from models import Payment, HikeRegistration
+        with get_db() as db:
+            payment = db.query(Payment).filter(Payment.id == payment_id).first()
+            if not payment:
+                return {"error": "Payment not found"}
+            
+            payment.status = status
+            if transaction_id:
+                payment.transaction_id = transaction_id
+            if checkout_request_id:
+                payment.checkout_request_id = checkout_request_id
+            if merchant_request_id:
+                payment.merchant_request_id = merchant_request_id
+            payment.updated_at = datetime.utcnow()
+            
+            # Update registration status if payment completed
+            if status == "completed":
+                registration = db.query(HikeRegistration).filter(
+                    HikeRegistration.id == payment.registration_id
+                ).first()
+                if registration:
+                    registration.payment_status = "paid"
+                    registration.status = "confirmed"
+            
+            db.flush()
+            return {"message": "Payment updated successfully"}
+    except Exception as e:
+        return {"error": f"Update failed: {str(e)}"}
+
+
+def get_hike_registrations(planned_hike_id: int) -> list:
+    """Get all registrations for a specific hike (for organizers)"""
+    try:
+        from models import HikeRegistration, User
+        with get_db() as db:
+            registrations = db.query(HikeRegistration).filter(
+                HikeRegistration.planned_hike_id == planned_hike_id
+            ).all()
+            
+            result = []
+            for reg in registrations:
+                user = db.query(User).filter(User.id == reg.user_id).first()
+                result.append({
+                    "registration_id": reg.id,
+                    "user_name": user.username if user else "Unknown",
+                    "phone_number": reg.phone_number,
+                    "status": reg.status,
+                    "payment_status": reg.payment_status,
+                    "created_at": reg.created_at.isoformat()
+                })
+            
+            return result
+    except Exception:
+        return []
