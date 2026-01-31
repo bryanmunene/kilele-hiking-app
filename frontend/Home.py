@@ -209,9 +209,22 @@ def display_hike_card(hike):
     col_img, col_content = st.columns([1, 2])
     
     with col_img:
-        # Display smaller image
+        # Display consistent-sized image with fixed aspect ratio
         if hike.get('image_url'):
+            # Use fixed height container for consistency
+            st.markdown("""
+                <style>
+                .trail-image-container img {
+                    width: 100%;
+                    height: 220px;
+                    object-fit: cover;
+                    border-radius: 15px 0 0 15px;
+                }
+                </style>
+                <div class="trail-image-container">
+            """, unsafe_allow_html=True)
             display_image(hike['image_url'], use_column_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
             # Use unique gradient based on trail name hash
             import hashlib
@@ -233,16 +246,22 @@ def display_hike_card(hike):
             st.markdown(f"""
                 <div style="
                     width: 100%;
-                    height: 200px;
+                    height: 220px;
                     background: {gradient};
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     font-size: 60px;
+                    border-radius: 15px 0 0 15px;
                 ">{emoji}</div>
             """, unsafe_allow_html=True)
     
     with col_content:
+        # Container for consistent content height
+        st.markdown("""
+            <div style="padding: 1rem; display: flex; flex-direction: column; height: 220px; justify-content: space-between;">
+        """, unsafe_allow_html=True)
+        
         # Title and location
         st.markdown(f"### {hike['name']}")
         st.markdown(f"📍 **{hike['location']}**")
@@ -258,10 +277,12 @@ def display_hike_card(hike):
         with col3:
             st.markdown(f"⏱️ **{hike['estimated_duration_hours']} hrs**")
         
-        # Short description
+        # Short description - truncate to maintain height
         if hike.get('description'):
-            preview = hike['description'][:120] + "..." if len(hike['description']) > 120 else hike['description']
-            st.markdown(f"<p style='color: #666; font-size: 0.95rem; margin-top: 0.5rem;'>{preview}</p>", unsafe_allow_html=True)
+            preview = hike['description'][:100] + "..." if len(hike['description']) > 100 else hike['description']
+            st.markdown(f"<p style='color: #666; font-size: 0.9rem; margin-top: 0.5rem; line-height: 1.4;'>{preview}</p>", unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("</div>", unsafe_allow_html=True)
     
