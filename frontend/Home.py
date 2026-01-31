@@ -213,16 +213,33 @@ def display_hike_card(hike):
         if hike.get('image_url'):
             display_image(hike['image_url'], use_column_width=True)
         else:
-            st.markdown("""
+            # Use unique gradient based on trail name hash
+            import hashlib
+            hash_val = int(hashlib.md5(hike['name'].encode()).hexdigest(), 16)
+            gradients = [
+                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+                "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+                "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+                "linear-gradient(135deg, #30cfd0 0%, #330867 100%)",
+                "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+                "linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)",
+            ]
+            emojis = ["🏔️", "🌲", "⛰️", "🏞️", "🌄", "🗻", "🏕️", "🌅"]
+            gradient = gradients[hash_val % len(gradients)]
+            emoji = emojis[hash_val % len(emojis)]
+            
+            st.markdown(f"""
                 <div style="
                     width: 100%;
                     height: 200px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    background: {gradient};
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     font-size: 60px;
-                ">🏞️</div>
+                ">{emoji}</div>
             """, unsafe_allow_html=True)
     
     with col_content:
