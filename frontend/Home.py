@@ -265,7 +265,11 @@ def display_hike_card(hike):
             st.markdown("---")
             st.markdown("### 🎒 Recommended Equipment")
             from services import get_trail_equipment
-            equipment = get_trail_equipment(hike['id'])
+            try:
+                equipment = get_trail_equipment(hike['id'])
+            except Exception:
+                equipment = None
+            
             if equipment:
                 required = [e for e in equipment if e['is_required']]
                 optional = [e for e in equipment if not e['is_required']]
