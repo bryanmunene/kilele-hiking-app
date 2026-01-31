@@ -123,31 +123,31 @@ with tab1:
         
         # Display hikes
         for hike in filtered_hikes:
-        with st.container():
-            st.markdown(f"""
-                <div style="
-                    background: white;
-                    border-radius: 12px;
-                    padding: 1.5rem;
-                    margin-bottom: 1.5rem;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                ">
-            """, unsafe_allow_html=True)
-            
-            col1, col2 = st.columns([2, 1])
-            
-            with col1:
-                # Hike details
-                st.markdown(f"### {hike['hike_name']}")
-                st.markdown(f"📍 **{hike['location']}** | 📅 **{datetime.fromisoformat(hike['date']).strftime('%B %d, %Y')}**")
+            with st.container():
+                st.markdown(f"""
+                    <div style="
+                        background: white;
+                        border-radius: 12px;
+                        padding: 1.5rem;
+                        margin-bottom: 1.5rem;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    ">
+                """, unsafe_allow_html=True)
                 
-                # Difficulty badge
-                difficulty_colors = {'Easy': '#51cf66', 'Moderate': '#ffd43b', 'Hard': '#ff6b6b'}
-                color = difficulty_colors.get(hike['difficulty'], '#868e96')
-                st.markdown(f"<span style='background: {color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;'>{hike['difficulty']}</span>", unsafe_allow_html=True)
+                col1, col2 = st.columns([2, 1])
                 
-                st.markdown(f"<p style='color: #666; margin-top: 0.5rem;'>{hike['description']}</p>", unsafe_allow_html=True)
-                st.caption(f"👤 Organized by **{hike['organizer']}**")
+                with col1:
+                    # Hike details
+                    st.markdown(f"### {hike['hike_name']}")
+                    st.markdown(f"📍 **{hike['location']}** | 📅 **{datetime.fromisoformat(hike['date']).strftime('%B %d, %Y')}**")
+                    
+                    # Difficulty badge
+                    difficulty_colors = {'Easy': '#51cf66', 'Moderate': '#ffd43b', 'Hard': '#ff6b6b'}
+                    color = difficulty_colors.get(hike['difficulty'], '#868e96')
+                    st.markdown(f"<span style='background: {color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;'>{hike['difficulty']}</span>", unsafe_allow_html=True)
+                    
+                    st.markdown(f"<p style='color: #666; margin-top: 0.5rem;'>{hike['description']}</p>", unsafe_allow_html=True)
+                    st.caption(f"👤 Organized by **{hike['organizer']}**")
             
             with col2:
                 # Pricing and availability
