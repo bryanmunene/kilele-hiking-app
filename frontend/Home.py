@@ -192,118 +192,116 @@ def get_difficulty_class(difficulty):
 
 def display_hike_card(hike):
     """Display a single hike in a card format"""
-    with st.container():
-        # Display image if available - optimized size for clarity
+    # Modern card with smaller image and better layout
+    st.markdown(f"""
+        <div style="
+            background: white;
+            border-radius: 15px;
+            padding: 0;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        ">
+    """, unsafe_allow_html=True)
+    
+    # Create two-column layout for image and content
+    col_img, col_content = st.columns([1, 2])
+    
+    with col_img:
+        # Display smaller image
         if hike.get('image_url'):
-            display_image(hike['image_url'], width=700)
+            display_image(hike['image_url'], use_column_width=True)
+        else:
+            st.markdown("""
+                <div style="
+                    width: 100%;
+                    height: 200px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 60px;
+                ">🏞️</div>
+            """, unsafe_allow_html=True)
+    
+    with col_content:
+        # Title and location
+        st.markdown(f"### {hike['name']}")
+        st.markdown(f"📍 **{hike['location']}**")
         
-        col1, col2, col3 = st.columns([4, 1, 1])
-        
+        # Quick stats in compact layout
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.markdown(f"### 🏔️ {hike['name']}")
-            st.markdown(f"📍 *{hike['location']}*")
-        
+            difficulty_colors = {'Easy': '#51cf66', 'Moderate': '#ffd43b', 'Hard': '#ff6b6b'}
+            difficulty_color = difficulty_colors.get(hike['difficulty'], '#868e96')
+            st.markdown(f"<span style='background: {difficulty_color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;'>{hike['difficulty']}</span>", unsafe_allow_html=True)
         with col2:
-            difficulty_class = get_difficulty_class(hike['difficulty'])
-            st.markdown(f"<span class='{difficulty_class}'>{hike['difficulty']}</span>", unsafe_allow_html=True)
-        
+            st.markdown(f"📍 **{hike['distance_km']} km**")
         with col3:
-            st.metric("Distance", f"{hike['distance_km']} km")
+            st.markdown(f"⏱️ **{hike['estimated_duration_hours']} hrs**")
         
         # Short description
         if hike.get('description'):
-            st.write(hike['description'][:150] + "..." if len(hike['description']) > 150 else hike['description'])
+            preview = hike['description'][:120] + "..." if len(hike['description']) > 120 else hike['description']
+            st.markdown(f"<p style='color: #666; font-size: 0.95rem; margin-top: 0.5rem;'>{preview}</p>", unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Details in expandable section - compact and clean
+    with st.expander("🔍 View Full Trail Details", expanded=False):
+        # Two-column layout
+        col_specs, col_desc = st.columns([1, 2])
         
-        # Details in expandable section
-        with st.expander("🔍 View Full Details"):
-            # Full description
-            if hike.get('description'):
-                st.write("**Description:**")
-                st.write(hike['description'])
-                st.markdown("---")
-            
-            col_a, col_b, col_c, col_d = st.columns(4)
-            
-            with col_a:
-                st.metric("📏 Distance", f"{hike['distance_km']} km")
-            with col_b:
-                st.metric("⏱️ Duration", f"{hike['estimated_duration_hours']} hrs")
-            with col_c:
-                if hike.get('elevation_gain_m'):
-                    st.metric("⛰️ Elevation", f"{hike['elevation_gain_m']} m")
-            with col_d:
-                st.metric("🗺️ Type", hike.get('trail_type', 'N/A'))
-            
+        with col_specs:
+            st.markdown("#### 📊 Specs")
+            st.markdown(f"📏 {hike['distance_km']} km")
+            st.markdown(f"⏱️ {hike['estimated_duration_hours']} hrs")
+            if hike.get('elevation_gain_m'):
+                st.markdown(f"⛰️ {hike['elevation_gain_m']} m")
+            st.markdown(f"🗺️ {hike.get('trail_type', 'N/A')}")
             if hike.get('best_season'):
-                st.markdown(f"**🌤️ Best Season:** {hike['best_season']}")
+                st.markdown(f"🌤️ {hike['best_season']}")
             
             if hike.get('latitude') and hike.get('longitude'):
-                st.markdown(f"**📍 Coordinates:** `{hike['latitude']}, {hike['longitude']}`")
-                st.markdown(f"[Open in Google Maps](https://www.google.com/maps?q={hike['latitude']},{hike['longitude']})")
-            
-            # Trail Conditions
-            st.markdown("---")
-            st.markdown("### 🌤️ Recent Trail Conditions")
-            from services import get_trail_conditions
-            conditions = get_trail_conditions(hike['id'], limit=3)
-            if conditions:
-                for cond in conditions:
-                    condition_emoji = {
-                        'excellent': '🟢',
-                        'good': '🟡',
-                        'fair': '🟠',
-                        'poor': '🔴',
-                        'closed': '⛔'
-                    }.get(cond['condition'], '⚪')
-                    st.markdown(f"{condition_emoji} **{cond['condition'].title()}** - {cond['notes']} *(by {cond['username']} on {cond['created_at'][:10]})*")
-                    if cond.get('weather'):
-                        st.markdown(f"   Weather: {cond['weather']}")
+                st.markdown(f"""  
+                📍 `{hike['latitude']}, {hike['longitude']}`  \n                [View on Map ↗️](https://www.google.com/maps?q={hike['latitude']},{hike['longitude']})\n                """)
+        
+        with col_desc:
+            st.markdown("#### 📝 About")
+            if hike.get('description'):
+                st.write(hike['description'])
             else:
-                st.info("No recent trail condition reports. Be the first to report!")
-            
-            # Equipment Checklist
-            st.markdown("---")
-            st.markdown("### 🎒 Recommended Equipment")
-            from services import get_trail_equipment
-            try:
-                equipment = get_trail_equipment(hike['id'])
-            except Exception:
-                equipment = None
-            
-            if equipment:
-                required = [e for e in equipment if e['is_required']]
-                optional = [e for e in equipment if not e['is_required']]
-                
-                if required:
-                    st.markdown("**Required:**")
-                    for item in required:
-                        st.markdown(f"✅ {item['item_name']} *({item['category']})*")
-                        if item.get('notes'):
-                            st.markdown(f"   *{item['notes']}*")
-                
-                if optional:
-                    st.markdown("**Optional:**")
-                    for item in optional:
-                        st.markdown(f"🔹 {item['item_name']} *({item['category']})*")
-                        if item.get('notes'):
-                            st.markdown(f"   *{item['notes']}*")
-            else:
-                st.info("No equipment checklist available for this trail yet.")
-            
-            # Save/Favorite button (if authenticated)
-            st.markdown("---")
+                st.info("No description available")
+        
+        # Trail Conditions (compact)
+        st.markdown("---")
+        st.markdown("#### 🌤️ Recent Trail Conditions")
+        from services import get_trail_conditions
+        conditions = get_trail_conditions(hike['id'], limit=2)
+        if conditions:
+            for cond in conditions:
+                condition_emoji = {'excellent': '🟢', 'good': '🟡', 'fair': '🟠', 'poor': '🔴', 'closed': '⛔'}.get(cond['condition'], '⚪')
+                st.markdown(f"{condition_emoji} **{cond['condition'].title()}** - {cond['notes'][:80]}... *({cond['created_at'][:10]})*")
+        else:
+            st.info("ℹ️ No recent condition reports")
+        
+        # Quick action buttons
+        st.markdown("---")
+        col_btn1, col_btn2, col_btn3 = st.columns(3)
+        with col_btn1:
             if is_authenticated():
-                if st.button(f"❤️ Save to Favorites", key=f"save_{hike['id']}"):
+                if st.button("❤️ Save Trail", key=f"save_{hike['id']}", use_container_width=True):
                     try:
                         user = get_current_user()
                         create_bookmark(user['id'], hike['id'])
-                        st.success("✅ Added to favorites!")
+                        st.success("✅ Saved!")
                     except ValueError as e:
                         st.info(str(e))
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-        
-        st.markdown("---")
+        with col_btn2:
+            st.markdown(f"[🗺️ View on Map](javascript:void(0))", unsafe_allow_html=True)
+        with col_btn3:
+            st.markdown(f"[📝 Add Review](javascript:void(0))", unsafe_allow_html=True)
 
 def main():
     # Hero Section with Animated Background
