@@ -522,39 +522,53 @@ def main():
     st.markdown("")
     st.markdown("")
     
-    # Featured Trails Section
+    # Featured Trails Section - Compact Horizontal Cards
     st.markdown("## 🌟 Featured Trails")
+    st.caption("Must-visit trails handpicked by our community")
     
-    # Get top 3 trails by various criteria
-    featured_hikes = hikes[:3] if len(hikes) >= 3 else hikes
+    # Select diverse featured trails (different difficulties)
+    featured_hikes = []
+    difficulties_shown = set()
+    for hike in hikes:
+        if hike['difficulty'] not in difficulties_shown and len(featured_hikes) < 3:
+            featured_hikes.append(hike)
+            difficulties_shown.add(hike['difficulty'])
+        if len(featured_hikes) >= 3:
+            break
+    if len(featured_hikes) < 3:
+        featured_hikes = hikes[:3] if len(hikes) >= 3 else hikes
     
-    for hike in featured_hikes:
-        col_img, col_info = st.columns([1, 2])
-        
-        with col_img:
+    # Display as horizontal cards
+    cols = st.columns(3)
+    for idx, hike in enumerate(featured_hikes):
+        with cols[idx]:
+            st.markdown(f"""
+                <div style="background: white; border-radius: 12px; overflow: hidden; 
+                box-shadow: 0 3px 10px rgba(0,0,0,0.15); margin-bottom: 1rem;">
+            """, unsafe_allow_html=True)
+            
             if hike.get('image_url'):
-                display_image(hike['image_url'])
-        
-        with col_info:
-            st.markdown(f"### 🏔️ {hike['name']}")
-            st.markdown(f"📍 **Location:** {hike['location']}")
+                display_image(hike['image_url'], use_column_width=True)
+            else:
+                import hashlib
+                hash_val = int(hashlib.md5(hike['name'].encode()).hexdigest(), 16)
+                gradients = ["linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                           "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                           "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"]
+                st.markdown(f"""<div style="height: 150px; background: {gradients[hash_val % 3]}; 
+                display: flex; align-items: center; justify-content: center; font-size: 50px;">🏔️</div>
+                """, unsafe_allow_html=True)
             
-            difficulty_class = get_difficulty_class(hike['difficulty'])
-            st.markdown(f"**Difficulty:** <span class='{difficulty_class}'>{hike['difficulty']}</span>", unsafe_allow_html=True)
-            
-            col_stat1, col_stat2, col_stat3 = st.columns(3)
-            with col_stat1:
-                st.metric("Distance", f"{hike['distance_km']} km")
-            with col_stat2:
-                st.metric("Duration", f"{hike['estimated_duration_hours']} hrs")
-            with col_stat3:
-                if hike.get('elevation_gain_m'):
-                    st.metric("Elevation", f"{hike['elevation_gain_m']} m")
-            
-            if hike.get('description'):
-                st.write(hike['description'][:200] + "..." if len(hike['description']) > 200 else hike['description'])
-        
-        st.markdown("---")
+            st.markdown(f"**{hike['name']}**")
+            st.caption(f"📍 {hike['location']}")
+            difficulty_colors = {'Easy': '#51cf66', 'Moderate': '#ffd43b', 'Hard': '#ff6b6b', 'Extreme': '#9c27b0'}
+            color = difficulty_colors.get(hike['difficulty'], '#868e96')
+            st.markdown(f"<span style='background: {color}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;'>{hike['difficulty']}</span>", unsafe_allow_html=True)
+            st.markdown(f"📏 {hike['distance_km']} km · ⏱️ {hike['estimated_duration_hours']} hrs")
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("")
+    st.markdown("---")
     
     # Services Section
     st.markdown("## 🎯 Our Services")
