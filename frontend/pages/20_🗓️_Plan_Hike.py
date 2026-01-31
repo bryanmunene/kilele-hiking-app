@@ -156,7 +156,11 @@ with tab1:
     with col2:
         # Trail preview
         st.markdown("#### Trail Details")
-        st.image("🏔️", use_column_width=False)
+        if selected_hike.get('image_url'):
+            from image_utils import display_image
+            display_image(selected_hike['image_url'], use_column_width=True)
+        else:
+            st.markdown("<div style='font-size: 80px; text-align: center;'>🏔️</div>", unsafe_allow_html=True)
         st.markdown(f"**{selected_hike['name']}**")
         st.caption(f"📍 {selected_hike['location']}")
         st.caption(f"🎯 {selected_hike['difficulty']}")
