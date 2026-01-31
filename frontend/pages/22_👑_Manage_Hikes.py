@@ -195,17 +195,52 @@ with tab1:
 
 with tab2:
     st.markdown("### Create New Upcoming Hike")
+    st.caption("Create a custom organized hike with any destination and details")
     
     with st.form(key="create_hike_form"):
-        # Select trail
-        all_hikes = get_all_hikes()
-        hike_options = {h['name']: h['id'] for h in all_hikes}
+        # Option to use existing trail or create custom
+        use_existing = st.checkbox("📍 Use existing trail from database", value=False)
         
-        selected_hike_name = st.selectbox(
-            "🏔️ Select Trail",
-            options=list(hike_options.keys()),
-            help="Choose which trail this organized hike will follow"
-        )
+        if use_existing:
+            # Select from existing trails
+            all_hikes = get_all_hikes()
+            hike_options = {h['name']: h['id'] for h in all_hikes}
+            
+            selected_hike_name = st.selectbox(
+                "🏔️ Select Trail",
+                options=list(hike_options.keys()),
+                help="Choose which trail this organized hike will follow"
+            )
+            hike_id = hike_options[selected_hike_name]
+            custom_name = None
+            custom_location = None
+            custom_difficulty = None
+        else:
+            # Custom hike details
+            st.markdown("#### Custom Hike Details")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                custom_name = st.text_input(
+                    "🏔️ Hike Name *",
+                    placeholder="e.g., Mount Kenya Summit Trek",
+                    help="Enter the name of the hiking destination"
+                )
+                custom_location = st.text_input(
+                    "📍 Location *",
+                    placeholder="e.g., Central Kenya, Nanyuki",
+                    help="Where is this hike located?"
+                )
+            with col_b:
+                custom_difficulty = st.selectbox(
+                    "🎯 Difficulty *",
+                    ["Easy", "Moderate", "Hard"],
+                    help="How challenging is this hike?"
+                )
+            
+            hike_id = None  # Will create as standalone organized hike
+        
+        st.markdown("---")
+        st.markdown("#### Schedule & Pricing")
         
         col1, col2 = st.columns(2)
         
@@ -253,17 +288,36 @@ with tab2:
         submit = st.form_submit_button("✅ Create Hike", type="primary")
         
         if submit:
-            if not selected_hike_name:
+            # Validation
+            if use_existing and not selected_hike_name:
                 st.error("Please select a trail")
+            elif not use_existing and (not custom_name or not custom_location or not custom_difficulty):
+                st.error("Please fill in all required fields (Name, Location, Difficulty)")
             else:
                 # Create planned hike
                 hike_datetime = datetime.combine(hike_date, hike_time)
                 
                 try:
                     with get_db() as db:
+                        # If custom hike, create trail entry first
+                        if not use_existing:
+                            new_trail = Hike(
+                                name=custom_name,
+                                location=custom_location,
+                                difficulty=custom_difficulty,
+                                distance_km=0,  # Can be updated later
+                                description=notes or f"Organized hike to {custom_name}",
+                                trail_type="Organized Group Hike"
+                            )
+                            db.add(new_trail)
+                            db.flush()
+                            db.refresh(new_trail)
+                            hike_id = new_trail.id
+                            st.info(f"✨ Created new trail: {custom_name}")
+                        
                         new_hike = PlannedHike(
                             user_id=user['id'],
-                            hike_id=hike_options[selected_hike_name],
+                            hike_id=hike_id,
                             planned_date=hike_datetime,
                             status="planned",
                             notes=notes,
