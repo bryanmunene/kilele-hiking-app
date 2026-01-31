@@ -88,8 +88,6 @@ with tab1:
     
     if not sample_hikes:
         st.info("📭 No upcoming organized hikes available yet. Check back soon or contact an admin to schedule one!")
-    if not sample_hikes:
-        st.info("📭 No upcoming organized hikes available yet. Check back soon or contact an admin to schedule one!")
     else:
         # Filter options
         col1, col2, col3 = st.columns([2, 2, 2])
