@@ -41,107 +41,90 @@ tab1, tab2 = st.tabs(["📅 Available Hikes", "✅ My Registrations"])
 with tab1:
     st.markdown("### Upcoming Organized Hikes")
     
-    # Get all upcoming planned hikes (organized by other users)
-    upcoming_hikes = get_user_planned_hikes(user['id'])
+    # Get actual upcoming hikes from database (created by admins)
+    from database import get_db
+    from models import PlannedHike, Hike, HikeRegistration, User
     
-    # For demo: Show sample upcoming hikes
-    st.info("💡 **Demo Mode**: In production, this would show publicly listed group hikes organized by guides or the community.")
+    try:
+        with get_db() as db:
+            # Get all planned hikes that are upcoming and planned status
+            planned_hikes_query = db.query(PlannedHike).filter(
+                PlannedHike.status == "planned",
+                PlannedHike.planned_date >= datetime.now()
+            ).order_by(PlannedHike.planned_date.asc()).all()
+            
+            # Convert to list of dicts
+            sample_hikes = []
+            for ph in planned_hikes_query:
+                hike = db.query(Hike).filter(Hike.id == ph.hike_id).first()
+                if not hike:
+                    continue
+                
+                # Count current registrations
+                current_registrations = db.query(HikeRegistration).filter(
+                    HikeRegistration.planned_hike_id == ph.id,
+                    HikeRegistration.status != "cancelled"
+                ).count()
+                
+                # Get organizer
+                organizer = db.query(User).filter(User.id == ph.user_id).first()
+                
+                sample_hikes.append({
+                    "id": ph.id,
+                    "hike_name": hike.name,
+                    "location": hike.location,
+                    "date": ph.planned_date.isoformat(),
+                    "price": ph.price or 0,
+                    "max_participants": ph.max_participants or 20,
+                    "current_participants": current_registrations,
+                    "organizer": organizer.username if organizer else "Kilele Adventures",
+                    "description": ph.notes or hike.description or "Join us for an amazing hiking experience!",
+                    "difficulty": hike.difficulty
+                })
     
-    # Sample upcoming hikes with pricing
-    sample_hikes = [
-        {
-            "id": 1,
-            "hike_name": "Mount Kenya Summit Trek",
-            "location": "Central Kenya",
-            "date": "2026-02-15",
-            "price": 8500,
-            "max_participants": 15,
-            "current_participants": 8,
-            "organizer": "Kilele Adventures",
-            "description": "3-day guided trek to Point Lenana (4,985m). Includes camping gear, meals, and mountain guide.",
-            "difficulty": "Hard"
-        },
-        {
-            "id": 2,
-            "hike_name": "Ngong Hills Sunrise Hike",
-            "location": "Ngong Hills",
-            "date": "2026-02-08",
-            "price": 1200,
-            "max_participants": 25,
-            "current_participants": 18,
-            "organizer": "Nairobi Hikers",
-            "description": "Early morning group hike to catch the stunning sunrise over the Great Rift Valley.",
-            "difficulty": "Easy"
-        },
-        {
-            "id": 3,
-            "hike_name": "Hell's Gate Cycling & Hiking",
-            "location": "Hell's Gate National Park",
-            "date": "2026-02-10",
-            "price": 3500,
-            "max_participants": 20,
-            "current_participants": 12,
-            "organizer": "Wildlife Trails Kenya",
-            "description": "Bike through the gorge, hike Fischer's Tower, and spot wildlife. Includes bike rental and park fees.",
-            "difficulty": "Moderate"
-        },
-        {
-            "id": 4,
-            "hike_name": "Longonot Crater Challenge",
-            "location": "Mount Longonot",
-            "date": "2026-02-12",
-            "price": 2000,
-            "max_participants": 30,
-            "current_participants": 22,
-            "organizer": "Peak Chasers",
-            "description": "Conquer the crater rim and enjoy 360° views. Includes transport from Nairobi and lunch.",
-            "difficulty": "Moderate"
-        },
-        {
-            "id": 5,
-            "hike_name": "Karura Forest Nature Walk",
-            "location": "Karura Forest",
-            "date": "2026-02-05",
-            "price": 0,
-            "max_participants": 50,
-            "current_participants": 34,
-            "organizer": "Community Walks",
-            "description": "Free guided nature walk exploring waterfalls and caves. Great for beginners and families.",
-            "difficulty": "Easy"
-        }
-    ]
+    except Exception as e:
+        st.error(f"Error loading hikes: {e}")
+        sample_hikes = []
     
-    # Filter options
-    col1, col2, col3 = st.columns([2, 2, 2])
-    with col1:
-        difficulty_filter = st.selectbox("🎯 Difficulty", ["All", "Easy", "Moderate", "Hard"])
-    with col2:
-        price_filter = st.selectbox("💰 Price", ["All", "Free", "Under KES 2,000", "Under KES 5,000", "KES 5,000+"])
-    with col3:
-        availability_filter = st.selectbox("👥 Availability", ["All", "Spots Available", "Almost Full"])
-    
-    # Filter hikes
-    filtered_hikes = sample_hikes
-    if difficulty_filter != "All":
-        filtered_hikes = [h for h in filtered_hikes if h['difficulty'] == difficulty_filter]
-    if price_filter == "Free":
-        filtered_hikes = [h for h in filtered_hikes if h['price'] == 0]
-    elif price_filter == "Under KES 2,000":
-        filtered_hikes = [h for h in filtered_hikes if h['price'] < 2000]
-    elif price_filter == "Under KES 5,000":
-        filtered_hikes = [h for h in filtered_hikes if h['price'] < 5000]
-    elif price_filter == "KES 5,000+":
-        filtered_hikes = [h for h in filtered_hikes if h['price'] >= 5000]
-    
-    if availability_filter == "Spots Available":
-        filtered_hikes = [h for h in filtered_hikes if h['current_participants'] < h['max_participants'] * 0.8]
-    elif availability_filter == "Almost Full":
-        filtered_hikes = [h for h in filtered_hikes if h['current_participants'] >= h['max_participants'] * 0.8]
-    
-    st.markdown(f"**{len(filtered_hikes)} hikes found**")
-    
-    # Display hikes
-    for hike in filtered_hikes:
+    if not sample_hikes:
+        st.info("📭 No upcoming organized hikes available yet. Check back soon or contact an admin to schedule one!")
+    if not sample_hikes:
+        st.info("📭 No upcoming organized hikes available yet. Check back soon or contact an admin to schedule one!")
+    else:
+        # Filter options
+        col1, col2, col3 = st.columns([2, 2, 2])
+        with col1:
+            difficulty_filter = st.selectbox("🎯 Difficulty", ["All", "Easy", "Moderate", "Hard"])
+        with col2:
+            price_filter = st.selectbox("💰 Price", ["All", "Free", "Under KES 2,000", "Under KES 5,000", "KES 5,000+"])
+        with col3:
+            availability_filter = st.selectbox("👥 Availability", ["All", "Spots Available", "Almost Full"])
+        
+        # Filter hikes
+        filtered_hikes = sample_hikes
+        if difficulty_filter != "All":
+            filtered_hikes = [h for h in filtered_hikes if h['difficulty'] == difficulty_filter]
+        if price_filter == "Free":
+            filtered_hikes = [h for h in filtered_hikes if h['price'] == 0]
+        elif price_filter == "Under KES 2,000":
+            filtered_hikes = [h for h in filtered_hikes if h['price'] < 2000]
+        elif price_filter == "Under KES 5,000":
+            filtered_hikes = [h for h in filtered_hikes if h['price'] < 5000]
+        elif price_filter == "KES 5,000+":
+            filtered_hikes = [h for h in filtered_hikes if h['price'] >= 5000]
+        
+        if availability_filter == "Spots Available":
+            filtered_hikes = [h for h in filtered_hikes if h['current_participants'] < h['max_participants'] * 0.8]
+        elif availability_filter == "Almost Full":
+            filtered_hikes = [h for h in filtered_hikes if h['current_participants'] >= h['max_participants'] * 0.8]
+        
+        st.markdown(f"**{len(filtered_hikes)} hikes found**")
+        
+        if not filtered_hikes:
+            st.info("No hikes match your filters. Try adjusting your search criteria.")
+        
+        # Display hikes
+        for hike in filtered_hikes:
         with st.container():
             st.markdown(f"""
                 <div style="
