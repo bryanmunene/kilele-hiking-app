@@ -1,44 +1,31 @@
+# Core FastAPI
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 sqlalchemy==2.0.35
 pydantic==2.9.2
 python-dotenv==1.0.1
+
+# Authentication
 passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
-email-validator
 bcrypt>=4.0.0
 pyotp
-qrcode
-pillow
-gpxpy==1.6.2
-fitparse==1.2.0
+qrcode[pil]
 
 # Strava integration
 stravalib>=2.0
 requests==2.32.3
 apscheduler==3.10.4
 
-# Database drivers
-psycopg2-binary==2.9.9
-alembic==1.13.1
-
-# Image storage
-cloudinary==1.41.0
-
-# Email services
-sendgrid==6.11.0
-aiosmtplib==3.0.1
-
-# Error tracking
-sentry-sdk[fastapi]==1.40.0
+# GPS data
+gpxpy==1.6.2
+fitparse==1.2.0
 
 # Rate limiting
 slowapi==0.1.9
 
-# Monitoring & logging
+# Utilities
+pillow
 python-json-logger==2.0.7
-
-# Security
-cryptography==42.0.0
 
