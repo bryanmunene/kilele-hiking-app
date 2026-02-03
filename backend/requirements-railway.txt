@@ -1,0 +1,30 @@
+# Core FastAPI
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+sqlalchemy==2.0.35
+pydantic==2.9.2
+python-dotenv==1.0.1
+
+# Authentication
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+bcrypt>=4.0.0
+pyotp
+qrcode[pil]
+
+# Strava integration
+stravalib>=2.0
+requests==2.32.3
+apscheduler==3.10.4
+
+# GPS data
+gpxpy==1.6.2
+fitparse==1.2.0
+
+# Rate limiting
+slowapi==0.1.9
+
+# Utilities
+pillow
+python-json-logger==2.0.7
