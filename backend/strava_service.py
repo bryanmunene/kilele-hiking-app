@@ -21,12 +21,16 @@ class StravaService:
         self.client_id = os.getenv("STRAVA_CLIENT_ID")
         self.client_secret = os.getenv("STRAVA_CLIENT_SECRET")
         self.redirect_uri = os.getenv("STRAVA_REDIRECT_URI", "http://localhost:8501/strava/callback")
+        self.is_configured = bool(self.client_id and self.client_secret)
         
-        if not self.client_id or not self.client_secret:
-            raise ValueError("STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET must be set in environment")
+        if not self.is_configured:
+            print("⚠️ WARNING: STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET not set - Strava integration disabled")
     
     def get_authorization_url(self, state: str = None) -> str:
         """Generate OAuth authorization URL"""
+        if not self.is_configured:
+            raise ValueError("Strava API credentials not configured. Please set STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET environment variables.")
+        
         client = Client()
         # Request read_all permission to access detailed activity data
         url = client.authorization_url(

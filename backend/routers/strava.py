@@ -54,10 +54,21 @@ async def connect_strava(current_user: dict = Depends(get_current_user)):
     """
     Get Strava OAuth authorization URL
     """
-    state = f"user_{current_user['id']}"
-    auth_url = strava_service.get_authorization_url(state=state)
-    
-    return {"authorization_url": auth_url}
+    try:
+        if not strava_service.is_configured:
+            raise HTTPException(
+                status_code=503,
+                detail="Strava integration is not configured. Please contact administrator to set up Strava API credentials."
+            )
+        
+        state = f"user_{current_user['id']}"
+        auth_url = strava_service.get_authorization_url(state=state)
+        
+        return {"authorization_url": auth_url}
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate authorization URL: {str(e)}")
 
 
 @router.post("/callback")

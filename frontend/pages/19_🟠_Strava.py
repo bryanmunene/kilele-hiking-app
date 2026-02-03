@@ -195,7 +195,8 @@ else:
         try:
             response = requests.get(
                 f"{API_BASE_URL}/api/strava/connect",
-                headers={"user-id": str(user['id'])}
+                headers={"user-id": str(user['id'])},
+                timeout=10
             )
             
             if response.status_code == 200:
@@ -222,10 +223,42 @@ else:
                 return here and refresh the page.
                 </p>
                 """, unsafe_allow_html=True)
+            elif response.status_code == 503:
+                error_detail = response.json().get('detail', 'Service unavailable')
+                st.error(f"⚙️ Configuration Required")
+                st.warning(f"""
+                **Strava integration is not yet configured.**
+                
+                {error_detail}
+                
+                **For administrators:** Please set the following environment variables in the backend:
+                - `STRAVA_CLIENT_ID`
+                - `STRAVA_CLIENT_SECRET`
+                - `STRAVA_REDIRECT_URI` (optional)
+                
+                See the 'Setup Instructions for Developers' section below for details.
+                """)
             else:
-                st.error("❌ Failed to get authorization URL")
+                error_msg = response.json().get('detail', 'Unknown error')
+                st.error(f"❌ Failed to get authorization URL: {error_msg}")
+        except requests.exceptions.ConnectionError:
+            st.error("❌ Cannot connect to backend server")
+            st.warning("""
+            **Backend server is not running.**
+            
+            Please start the backend server:
+            ```bash
+            cd backend
+            python main.py
+            ```
+            
+            The backend should be running at `http://localhost:8000`
+            """)
+        except requests.exceptions.Timeout:
+            st.error("❌ Request timed out - backend server is not responding")
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
+            st.caption("Please check that the backend server is running and Strava credentials are configured.")
     
     st.markdown("---")
     

@@ -15,7 +15,7 @@ gpxpy==1.6.2
 fitparse==1.2.0
 
 # Strava integration
-stravalib==1.6.0
+stravalib>=2.0
 requests==2.32.3
 apscheduler==3.10.4
 

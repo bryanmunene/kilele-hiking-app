@@ -10,6 +10,12 @@ from database import init_database
 from services import get_all_hikes, create_session, get_user_sessions
 from auth import is_authenticated, get_current_user
 from nature_theme import apply_nature_theme
+from offline_cache import (
+    prepare_offline_hike_ui, 
+    show_offline_indicator, 
+    OfflineCache,
+    check_internet_connection
+)
 
 init_database()
 
@@ -24,6 +30,10 @@ if not is_authenticated():
 
 st.title("📍 Track Your Hike")
 st.markdown("Start tracking your adventure in real-time!")
+
+# Show offline indicator if no internet
+is_offline = show_offline_indicator()
+
 st.markdown("---")
 
 # Fetch available hikes
@@ -221,6 +231,10 @@ if hikes:
                         st.rerun()
                     else:
                         st.error(f"Error: {result}")
+            
+            # Offline preparation feature
+            st.markdown("---")
+            prepare_offline_hike_ui(hike['id'], hike)
 else:
     st.warning("No hikes available")
 

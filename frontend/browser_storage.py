@@ -60,3 +60,58 @@ def restore_session_from_browser():
                 st.session_state.session_token = token
                 st.session_state.token_loaded = True
                 # The is_authenticated() function will validate and restore the session
+
+
+def save_to_browser(key: str, value: str):
+    """Save generic data to browser localStorage"""
+    # Escape single quotes in value
+    escaped_value = value.replace("'", "\\'").replace("\n", "\\n")
+    components.html(
+        f"""
+        <script>
+            try {{
+                localStorage.setItem('{key}', '{escaped_value}');
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'saved'}}, '*');
+            }} catch(e) {{
+                console.error('Error saving to localStorage:', e);
+            }}
+        </script>
+        """,
+        height=0,
+    )
+
+
+def load_from_browser(key: str):
+    """Load generic data from browser localStorage"""
+    value = components.html(
+        f"""
+        <script>
+            try {{
+                const value = localStorage.getItem('{key}');
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: value || ''}}, '*');
+            }} catch(e) {{
+                console.error('Error loading from localStorage:', e);
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: ''}}, '*');
+            }}
+        </script>
+        """,
+        height=0,
+    )
+    return value if value else None
+
+
+def clear_from_browser(key: str):
+    """Clear specific data from browser localStorage"""
+    components.html(
+        f"""
+        <script>
+            try {{
+                localStorage.removeItem('{key}');
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'cleared'}}, '*');
+            }} catch(e) {{
+                console.error('Error clearing from localStorage:', e);
+            }}
+        </script>
+        """,
+        height=0,
+    )
