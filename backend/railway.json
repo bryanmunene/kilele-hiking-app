@@ -1,6 +1,3 @@
-# Railway Configuration for Backend Deployment
-# railway.json
-
 {
   "build": {
     "builder": "NIXPACKS",
