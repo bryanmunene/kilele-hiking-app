@@ -51,10 +51,10 @@ frontend/
 
 ```
 Username: admin
-Password: admin123
+No shared password is provided; create a personal account in the app.
 
 Username: demo
-Password: demo123
+No shared password is provided; create a personal account in the app.
 ```
 
 ## 🎯 The Path Forward
@@ -73,7 +73,7 @@ streamlit run Home.py
 ### Option 2: Update Login Page First (RECOMMENDED - 30 min)
 Keep MIGRATION_EXAMPLE.py as homepage, update Login page to use new auth:
 - Update pages/0_🔐_Login.py ✅ ALREADY DONE!
-- Test login with admin/admin123
+- Test login with a personal account created in the app
 - Then update remaining 13 pages
 
 ### Option 3: Complete Migration Script (SYSTEMATIC - 4-6 hours)

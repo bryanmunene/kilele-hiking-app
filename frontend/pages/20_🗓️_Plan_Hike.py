@@ -158,7 +158,7 @@ with tab1:
         st.markdown("#### Trail Details")
         if selected_hike.get('image_url'):
             from image_utils import display_image
-            display_image(selected_hike['image_url'], use_column_width=True)
+            display_image(selected_hike['image_url'], width="stretch")
         else:
             st.markdown("<div style='font-size: 80px; text-align: center;'>🏔️</div>", unsafe_allow_html=True)
         st.markdown(f"**{selected_hike['name']}**")
@@ -169,7 +169,7 @@ with tab1:
     
     # Create button
     st.markdown("---")
-    if st.button("📅 Schedule Hike", type="primary", use_container_width=True):
+    if st.button("📅 Schedule Hike", type="primary", width="stretch"):
         # Combine date and time
         planned_datetime = datetime.combine(hike_date, hike_time)
         

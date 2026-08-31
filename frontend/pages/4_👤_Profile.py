@@ -210,7 +210,7 @@ if completed_sessions:
             labels={'x': 'Rating', 'y': 'Count'},
             title='Hike Ratings'
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     
     # Display recent hikes
     st.write("### 🕒 Recent Completed Hikes")

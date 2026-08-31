@@ -38,8 +38,8 @@ The unified Streamlit architecture is **100% functional and tested**!
 
 ### Test Accounts
 ```
-Admin: username='admin', password='admin123'
-Demo:  username='demo', password='demo123'
+Create a personal account from the Login page; shared credentials are not seeded.
+Accounts: create a personal account from the Login page
 ```
 
 ### Working Features (in MIGRATION_EXAMPLE.py)

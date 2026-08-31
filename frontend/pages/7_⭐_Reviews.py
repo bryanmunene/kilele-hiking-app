@@ -66,8 +66,11 @@ def submit_review(hike_id, rating, title, comment, difficulty_rating, conditions
             user_id=user['id'],
             hike_id=hike_id,
             rating=rating,
-            comment=f"**{title}**\\n\\n{comment}\\n\\nDifficulty: {difficulty_rating}/5\\nConditions: {conditions}",
-            visited_date=visited_date
+            title=title,
+            comment=comment,
+            difficulty_rating=difficulty_rating,
+            trail_condition=conditions,
+            visited_date=visited_date,
         )
         
         if review:
@@ -126,10 +129,13 @@ with tab1:
     col1, col2 = st.columns([3, 1])
     
     with col1:
+        requested_hike_id = st.session_state.get("selected_hike_id")
+        requested_index = next((i for i, item in enumerate(hikes) if item["id"] == requested_hike_id), 0)
         selected_hike = st.selectbox(
             "Select a trail to view reviews",
             options=hikes,
             format_func=lambda x: f"{x['name']} - {x['location']} ({x['difficulty']})",
+            index=requested_index,
             key="browse_hike_select"
         )
     
@@ -178,7 +184,7 @@ with tab1:
             with col2:
                 st.markdown(f"<div class='stat-card'><h3>{avg_rating:.1f}/5</h3><p>Average Rating</p></div>", unsafe_allow_html=True)
             with col3:
-                difficulty_ratings = [r.get('difficulty_rating') for r in reviews if r.get('difficulty_rating')]
+                difficulty_ratings = [float(r['difficulty_rating']) for r in reviews if r.get('difficulty_rating')]
                 avg_difficulty = sum(difficulty_ratings) / len(difficulty_ratings) if difficulty_ratings else 0
                 st.markdown(f"<div class='stat-card'><h3>{avg_difficulty:.1f}/5</h3><p>Difficulty Rating</p></div>", unsafe_allow_html=True)
             
@@ -203,7 +209,7 @@ with tab1:
                 
                 # Review details
                 if review.get('difficulty_rating'):
-                    st.markdown(f"**Difficulty Rating:** {render_star_rating(review['difficulty_rating'])}")
+                    st.markdown(f"**Difficulty Rating:** {render_star_rating(float(review['difficulty_rating']))}")
                 
                 if review.get('conditions'):
                     st.markdown(f"**Trail Conditions:** {review['conditions']}")
@@ -217,7 +223,7 @@ with tab1:
                     photo_cols = st.columns(min(len(review['photos']), 3))
                     for idx, photo in enumerate(review['photos'][:3]):
                         with photo_cols[idx]:
-                            st.image(photo['photo_url'], caption=photo.get('caption', ''), use_column_width=True)
+                            st.image(photo['photo_url'], caption=photo.get('caption', ''), width="stretch")
                 
                 st.markdown("---")
         else:
@@ -231,10 +237,13 @@ with tab2:
     # Select trail
     hikes = fetch_hikes()
     
+    requested_hike_id = st.session_state.get("selected_hike_id")
+    requested_index = next((i for i, item in enumerate(hikes) if item["id"] == requested_hike_id), 0)
     selected_hike = st.selectbox(
         "Select the trail you hiked",
         options=hikes,
         format_func=lambda x: f"{x['name']} - {x['location']}",
+        index=requested_index,
         key="write_review_hike_select"
     )
     
@@ -294,7 +303,7 @@ with tab2:
                 max_chars=2000
             )
             
-            submitted = st.form_submit_button("Submit Review", use_container_width=True)
+            submitted = st.form_submit_button("Submit Review", width="stretch")
             
             if submitted:
                 if not title or not comment:

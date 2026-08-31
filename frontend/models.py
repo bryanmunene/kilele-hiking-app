@@ -69,6 +69,8 @@ class Review(Base):
     photos = Column(JSON)
     difficulty_rating = Column(String)
     trail_condition = Column(String)
+    visited_date = Column(DateTime)
+    helpful_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -102,6 +104,7 @@ class Bookmark(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     hike_id = Column(Integer, ForeignKey("hikes.id"), nullable=False)
+    notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

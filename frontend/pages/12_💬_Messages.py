@@ -81,5 +81,5 @@ with tab2:
 st.divider()
 col1, col2 = st.columns([3, 1])
 with col2:
-    if st.button("🔄 Refresh", use_container_width=True):
+    if st.button("🔄 Refresh", width="stretch"):
         st.rerun()

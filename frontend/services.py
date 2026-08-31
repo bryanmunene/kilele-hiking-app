@@ -75,16 +75,26 @@ def create_hike(hike_data: dict) -> dict:
 
 # ============= REVIEW SERVICES =============
 
-def get_reviews(hike_id: int) -> List[dict]:
+def get_reviews(hike_id: int, user_id: int = None) -> List[dict]:
     """Get all reviews for a hike"""
     with get_db() as db:
-        reviews = db.query(Review).filter(Review.hike_id == hike_id).all()
+        query = db.query(Review).filter(Review.hike_id == hike_id)
+        if user_id is not None:
+            query = query.filter(Review.user_id == user_id)
+        reviews = query.all()
         
         return [{
             "id": r.id,
+            "user_id": r.user_id,
             "rating": r.rating,
+            "title": r.title or "Trail review",
             "comment": r.comment,
-            "photos": r.photos,
+            "photos": r.photos or [],
+            "difficulty_rating": r.difficulty_rating,
+            "conditions": r.trail_condition,
+            "visited_date": r.visited_date.isoformat() if r.visited_date else None,
+            "helpful_count": r.helpful_count or 0,
+            "username": r.user.username,
             "created_at": r.created_at.isoformat() if r.created_at else None,
             "user": {
                 "id": r.user.id,
@@ -93,15 +103,33 @@ def get_reviews(hike_id: int) -> List[dict]:
             }
         } for r in reviews]
 
-def create_review(user_id: int, hike_id: int, rating: int, comment: str = None, photos: List[str] = None) -> dict:
+def create_review(
+    user_id: int,
+    hike_id: int,
+    rating: int,
+    comment: str = None,
+    photos: List[str] = None,
+    title: str = None,
+    difficulty_rating: int = None,
+    trail_condition: str = None,
+    visited_date=None,
+) -> dict:
     """Create a new review"""
+    if visited_date is not None and not isinstance(visited_date, datetime):
+        visited_date = datetime.combine(visited_date, datetime.min.time())
+
     with get_db() as db:
         review = Review(
             user_id=user_id,
             hike_id=hike_id,
             rating=rating,
+            title=title,
             comment=comment,
-            photos=photos or []
+            photos=photos or [],
+            difficulty_rating=str(difficulty_rating) if difficulty_rating is not None else None,
+            trail_condition=trail_condition,
+            visited_date=visited_date,
+            helpful_count=0,
         )
         db.add(review)
         db.flush()
@@ -123,12 +151,16 @@ def get_user_bookmarks(user_id: int) -> List[dict]:
                 "location": b.hike.location,
                 "difficulty": b.hike.difficulty,
                 "distance_km": b.hike.distance_km,
+                "estimated_duration_hours": b.hike.estimated_duration_hours,
+                "elevation_gain_m": b.hike.elevation_gain_m,
+                "description": b.hike.description,
                 "image_url": b.hike.image_url
             },
+            "notes": b.notes,
             "created_at": b.created_at.isoformat() if b.created_at else None
         } for b in bookmarks]
 
-def create_bookmark(user_id: int, hike_id: int) -> dict:
+def create_bookmark(user_id: int, hike_id: int, notes: str = None) -> dict:
     """Create a bookmark"""
     with get_db() as db:
         # Check if already bookmarked
@@ -140,7 +172,7 @@ def create_bookmark(user_id: int, hike_id: int) -> dict:
         if existing:
             raise ValueError("Already bookmarked")
         
-        bookmark = Bookmark(user_id=user_id, hike_id=hike_id)
+        bookmark = Bookmark(user_id=user_id, hike_id=hike_id, notes=notes or None)
         db.add(bookmark)
         db.flush()
         

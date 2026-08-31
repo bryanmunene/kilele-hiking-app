@@ -134,7 +134,7 @@ if not activities:
     
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        if st.button("Find Hikers to Follow", use_container_width=True):
+        if st.button("Find Hikers to Follow", width="stretch"):
             st.switch_page("pages/9_👥_Social.py")
 else:
     # Filter options
@@ -228,7 +228,7 @@ with col1:
         <p>Connect with active hikers to see more updates</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Find Hikers", use_container_width=True):
+    if st.button("Find Hikers", width="stretch"):
         st.switch_page("pages/9_👥_Social.py")
 
 with col2:
@@ -238,7 +238,7 @@ with col2:
         <p>Write reviews and complete hikes to engage</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Write Review", use_container_width=True):
+    if st.button("Write Review", width="stretch"):
         st.switch_page("pages/7_⭐_Reviews.py")
 
 with col3:
@@ -248,5 +248,5 @@ with col3:
         <p>Complete challenges to unlock badges</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("View Achievements", use_container_width=True):
+    if st.button("View Achievements", width="stretch"):
         st.switch_page("pages/10_🏆_Achievements.py")

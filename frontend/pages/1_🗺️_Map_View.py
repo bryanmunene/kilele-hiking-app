@@ -93,17 +93,25 @@ def main():
     # Filter by difficulty
     filtered_trails = [h for h in trails_with_coords if h['difficulty'] in difficulty_filter]
     
-    # Calculate map center (center of Kenya approximately)
-    if filtered_trails:
+    requested_hike_id = st.session_state.get("selected_hike_id")
+    requested_hike = next((h for h in filtered_trails if h["id"] == requested_hike_id), None)
+
+    # Focus a trail selected on the discovery page; otherwise fit the result set.
+    if requested_hike:
+        avg_lat, avg_lon = requested_hike["latitude"], requested_hike["longitude"]
+        zoom_start = 12
+    elif filtered_trails:
         avg_lat = sum(h['latitude'] for h in filtered_trails) / len(filtered_trails)
         avg_lon = sum(h['longitude'] for h in filtered_trails) / len(filtered_trails)
+        zoom_start = 7
     else:
         avg_lat, avg_lon = -0.0236, 37.9062  # Nairobi
+        zoom_start = 6
     
     # Create map
     m = folium.Map(
         location=[avg_lat, avg_lon],
-        zoom_start=7,
+        zoom_start=zoom_start,
         tiles='OpenStreetMap'
     )
     

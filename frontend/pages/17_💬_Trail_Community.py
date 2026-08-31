@@ -9,7 +9,7 @@ apply_nature_theme()
 # Check if user is logged in
 if 'user' not in st.session_state:
     st.warning("⚠️ Please log in to view and post trail comments")
-    st.page_link("pages/3_🔐_Login.py", label="Go to Login", icon="🔐")
+    st.page_link("pages/0_🔐_Login.py", label="Go to Login", icon="🔐")
     st.stop()
 
 user = st.session_state.user
@@ -140,7 +140,7 @@ if selected_trail:
                 help="Be respectful and helpful to fellow hikers"
             )
             
-            submit = st.form_submit_button("Post Comment", type="primary", use_container_width=True)
+            submit = st.form_submit_button("Post Comment", type="primary", width="stretch")
             
             if submit:
                 if not comment_text:

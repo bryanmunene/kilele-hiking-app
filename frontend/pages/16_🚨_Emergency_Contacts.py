@@ -20,7 +20,7 @@ st.markdown("""
 # Check if user is logged in
 if 'user' not in st.session_state:
     st.warning("⚠️ Please log in to manage emergency contacts")
-    st.page_link("pages/3_🔐_Login.py", label="Go to Login", icon="🔐")
+    st.page_link("pages/0_🔐_Login.py", label="Go to Login", icon="🔐")
     st.stop()
 
 user = st.session_state.user
@@ -86,7 +86,7 @@ with col2:
         relation = st.text_input("Relationship", placeholder="e.g., Spouse, Friend, Parent")
         is_primary = st.checkbox("Set as primary contact", help="This contact will be notified first")
         
-        submit = st.form_submit_button("Add Contact", type="primary", use_container_width=True)
+        submit = st.form_submit_button("Add Contact", type="primary", width="stretch")
         
         if submit:
             if not name or not phone:

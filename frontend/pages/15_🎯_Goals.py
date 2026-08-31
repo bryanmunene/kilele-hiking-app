@@ -9,7 +9,7 @@ apply_nature_theme()
 # Check if user is logged in
 if 'user' not in st.session_state:
     st.warning("⚠️ Please log in to view your goals")
-    st.page_link("pages/3_🔐_Login.py", label="Go to Login", icon="🔐")
+    st.page_link("pages/0_🔐_Login.py", label="Go to Login", icon="🔐")
     st.stop()
 
 user = st.session_state.user

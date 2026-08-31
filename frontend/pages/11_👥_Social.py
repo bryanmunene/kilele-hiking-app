@@ -155,7 +155,7 @@ with tab1:
                     # Check if we're following them back
                     following_ids = [f['following_user_id'] for f in following]
                     if follower['follower_user_id'] not in following_ids:
-                        if st.button("Follow Back", key=f"follow_back_{follower['id']}", use_container_width=True):
+                        if st.button("Follow Back", key=f"follow_back_{follower['id']}", width="stretch"):
                             st.info("Follow back feature coming soon!")
                     else:
                         st.success("✓ Following")
@@ -194,7 +194,7 @@ with tab2:
                     st.markdown(f"<div class='connection-date'>Following since {format_date(follow['created_at'])}</div>", unsafe_allow_html=True)
                 
                 with col2:
-                    if st.button("Unfollow", key=f"unfollow_{follow['id']}", use_container_width=True, type="secondary"):
+                    if st.button("Unfollow", key=f"unfollow_{follow['id']}", width="stretch", type="secondary"):
                         if unfollow_user(follow['id']):
                             st.rerun()
                 
