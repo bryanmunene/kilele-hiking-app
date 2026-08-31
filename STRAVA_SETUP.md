@@ -98,7 +98,7 @@ STRAVA_REDIRECT_URI=http://localhost:8501/strava/callback
 # STRAVA_REDIRECT_URI=https://your-app.streamlit.app/strava/callback
 
 # Webhook Verification Token (generate random string)
-STRAVA_WEBHOOK_VERIFY_TOKEN=my_secure_random_token_123
+STRAVA_WEBHOOK_VERIFY_TOKEN=<SET_IN_DEPLOYMENT_SECRETS>
 ```
 
 ### 2.2 Generate Webhook Verify Token
@@ -116,9 +116,9 @@ Check `backend/config.py` includes:
 ```python
 # Strava API Configuration
 STRAVA_CLIENT_ID: str = os.getenv("STRAVA_CLIENT_ID", "")
-STRAVA_CLIENT_SECRET: str = os.getenv("STRAVA_CLIENT_SECRET", "")
+STRAVA_CLIENT_SECRET: <SET_IN_DEPLOYMENT_SECRETS> = os.getenv("STRAVA_CLIENT_SECRET", "")
 STRAVA_REDIRECT_URI: str = os.getenv("STRAVA_REDIRECT_URI", "http://localhost:8501/strava/callback")
-STRAVA_WEBHOOK_VERIFY_TOKEN: str = os.getenv("STRAVA_WEBHOOK_VERIFY_TOKEN", "")
+STRAVA_WEBHOOK_VERIFY_TOKEN: <SET_IN_DEPLOYMENT_SECRETS> = os.getenv("STRAVA_WEBHOOK_VERIFY_TOKEN", "")
 ```
 
 ### 2.4 Restart Backend
@@ -521,9 +521,9 @@ SELECT * FROM strava_webhook_subscriptions;
 ### Environment Variables
 ```bash
 STRAVA_CLIENT_ID=12345
-STRAVA_CLIENT_SECRET=abc123
+STRAVA_CLIENT_SECRET=<SET_IN_DEPLOYMENT_SECRETS>
 STRAVA_REDIRECT_URI=http://localhost:8501/strava/callback
-STRAVA_WEBHOOK_VERIFY_TOKEN=random_token_123
+STRAVA_WEBHOOK_VERIFY_TOKEN=<SET_IN_DEPLOYMENT_SECRETS>
 ```
 
 ### API Endpoints

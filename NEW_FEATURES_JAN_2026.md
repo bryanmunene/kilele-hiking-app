@@ -203,7 +203,7 @@ streamlit run Home.py
 4. View vendor information
 
 **Plan Hike:**
-1. Login with test account (admin/admin123)
+1. Create and log in with a personal account
 2. Click "🗓️ Plan Hike" in sidebar
 3. Select trail from dropdown
 4. Choose date, time, and transport mode

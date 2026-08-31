@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import sys
 import os
 
@@ -97,7 +96,7 @@ def login(username, password, two_fa_token=None, remember_me=True):
         st.session_state.user = user
         st.session_state.session_token = session_token  # Save token for persistent login
         
-        # Save token to browser localStorage (keeps Nesh logged in on refresh)
+        # Save the token for remembered sessions.
         save_token_to_browser(session_token)
         
         return True, "Login successful!"
@@ -174,7 +173,7 @@ else:
                 # Remember me checkbox
                 remember_me = st.checkbox("Remember me for 30 days", value=True)
                 
-                submit = st.form_submit_button("🔐 Login", use_container_width=True)
+                submit = st.form_submit_button("🔐 Login", width="stretch")
                 
                 if submit:
                     if not username or not password:
@@ -236,15 +235,15 @@ else:
                     help="Must match your password"
                 )
                 
-                submit_reg = st.form_submit_button("📝 Create Account", use_container_width=True)
+                submit_reg = st.form_submit_button("📝 Create Account", width="stretch")
                 
                 if submit_reg:
                     if not all([reg_username, reg_email, reg_fullname, reg_password, reg_confirm]):
                         st.error("Please fill in all fields")
                     elif reg_password != reg_confirm:
                         st.error("Passwords do not match")
-                    elif len(reg_password) < 6:
-                        st.error("Password must be at least 6 characters")
+                    elif len(reg_password) < 8:
+                        st.error("Password must be at least 8 characters")
                     else:
                         with st.spinner("Creating account..."):
                             success, message = register(reg_username, reg_email, reg_fullname, reg_password)

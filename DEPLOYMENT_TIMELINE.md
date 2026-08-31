@@ -36,9 +36,9 @@ git push -u origin main
    DEBUG=False
    SECRET_KEY=your_secret_key_change_this
    STRAVA_CLIENT_ID=199882
-   STRAVA_CLIENT_SECRET=5ddc762ef5621ee2ad9de18e19b3adb4c05691e9
+   STRAVA_CLIENT_SECRET=<SET_IN_DEPLOYMENT_SECRETS>
    STRAVA_REDIRECT_URI=https://your-frontend-url.streamlit.app/strava/callback
-   STRAVA_WEBHOOK_VERIFY_TOKEN=kilele_strava_webhook_2026
+   STRAVA_WEBHOOK_VERIFY_TOKEN=<SET_IN_DEPLOYMENT_SECRETS>
    ```
 
 4. **Deploy**

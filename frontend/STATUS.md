@@ -13,7 +13,7 @@ The application has been successfully migrated from a two-service architecture (
 - **Authentication**: Session-based auth with bcrypt password hashing
 - **Models**: 11 database tables (Hike, User, Review, Session, Bookmark, Achievement, Follow, Conversation, Message, etc.)
 - **Services**: 70+ business logic functions for all operations
-- **Seeded Data**: 7 Kenyan hiking trails + 2 test users (admin/admin123, demo/demo123)
+- **Seeded Data**: 7 Kenyan hiking trails + 23 gear catalogue items
 
 ### Fully Migrated Pages (12/14) ✅
 1. **Home.py** - Browse trails, statistics, filtering
@@ -78,8 +78,8 @@ streamlit run Home.py
 ```
 
 **Login with:**
-- Username: `admin` / Password: `admin123`
-- Username: `demo` / Password: `demo123`
+- Create an account from the Login page; no shared default credentials are seeded.
+- Create and use a personal account from the Login page.
 
 **App URL**: http://localhost:8501
 

@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 ### **2. Setup Database**
 ```bash
-# Create and seed database with sample trails and users
+# Create and seed database with sample trails and gear
 python seed_database.py
 ```
 
@@ -33,13 +33,9 @@ App runs at: **http://localhost:8501**
 
 ---
 
-## 👥 **DEFAULT USER ACCOUNTS**
+## 👥 **ACCOUNTS**
 
-| Username | Password | Role | Features |
-|----------|----------|------|----------|
-| **admin** | admin123 | Admin | Full admin dashboard access |
-| **demo** | demo123 | Admin | Full admin access |
-| **Nesh** | (your password) | Admin | Your personal admin account |
+Create an account from the Login page. The application does not ship with shared default credentials; administrator access must be assigned explicitly in the database.
 
 ---
 

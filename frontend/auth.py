@@ -1,16 +1,17 @@
 """
 Authentication module for Streamlit app
 Simplified auth using session state with persistent tokens
-Persists Nesh's login across browser refreshes using localStorage
+Persists signed-in sessions across browser refreshes using localStorage
 """
+import re
 import streamlit as st
-import streamlit.components.v1 as components
 import bcrypt
 import pyotp
 import secrets
 from database import get_db
 from models import User, SessionToken
 from datetime import datetime, timedelta
+from browser_storage import clear_token_from_browser, load_token_from_browser, save_token_to_browser as persist_token
 
 def hash_password(password: str) -> str:
     """Hash a password"""
@@ -26,15 +27,8 @@ def create_session_token(user_id: int, remember_me: bool = True) -> str:
         # Generate secure random token
         token = secrets.token_urlsafe(32)
         
-        # Check if user is Nesh - give permanent session
-        user = db.query(User).filter(User.id == user_id).first()
-        is_nesh = user and user.username == "Nesh"
-        
-        # Set expiration (permanent for Nesh, 30 days for remember me, 1 day otherwise)
-        if is_nesh:
-            expires_at = datetime.utcnow() + timedelta(days=3650)  # 10 years (effectively permanent)
-        else:
-            expires_at = datetime.utcnow() + timedelta(days=30 if remember_me else 1)
+        # Keep all accounts on the same bounded session policy.
+        expires_at = datetime.utcnow() + timedelta(days=30 if remember_me else 1)
         
         # Save token to database
         session_token = SessionToken(
@@ -63,11 +57,8 @@ def get_user_by_token(token: str) -> dict:
         db.flush()
         
         user = db.query(User).filter(User.id == session.user_id).first()
-        if not user:
+        if not user or not user.is_active:
             return None
-        
-        # Ensure Nesh is always admin
-        is_admin = user.is_admin or (user.username == "Nesh")
         
         return {
             "id": user.id,
@@ -75,7 +66,7 @@ def get_user_by_token(token: str) -> dict:
             "email": user.email,
             "full_name": user.full_name,
             "profile_picture": user.profile_picture,
-            "is_admin": is_admin,
+            "is_admin": bool(user.is_admin),
             "two_factor_enabled": user.two_factor_enabled,
             "two_factor_secret": user.two_factor_secret,
             "created_at": user.created_at.isoformat() if user.created_at else None
@@ -92,16 +83,13 @@ def invalidate_token(token: str):
 def authenticate_user(username: str, password: str) -> dict:
     """Authenticate user and return user data"""
     with get_db() as db:
-        user = db.query(User).filter(User.username == username).first()
+        user = db.query(User).filter(User.username.ilike(username.strip())).first()
         
-        if not user:
+        if not user or not user.is_active:
             return None
         
         if not verify_password(password, user.hashed_password):
             return None
-        
-        # Ensure Nesh is always admin
-        is_admin = user.is_admin or (user.username == "Nesh")
         
         return {
             "id": user.id,
@@ -109,7 +97,7 @@ def authenticate_user(username: str, password: str) -> dict:
             "email": user.email,
             "full_name": user.full_name,
             "profile_picture": user.profile_picture,
-            "is_admin": is_admin,
+            "is_admin": bool(user.is_admin),
             "two_factor_enabled": user.two_factor_enabled,
             "two_factor_secret": user.two_factor_secret,
             "created_at": user.created_at.isoformat() if user.created_at else None
@@ -117,10 +105,21 @@ def authenticate_user(username: str, password: str) -> dict:
 
 def register_user(username: str, email: str, password: str, full_name: str = None) -> dict:
     """Register a new user"""
+    username = username.strip()
+    email = email.strip().lower()
+    full_name = full_name.strip() if full_name else None
+
+    if not re.fullmatch(r"[A-Za-z0-9_]{3,30}", username):
+        raise ValueError("Username must be 3–30 characters using letters, numbers, or underscores")
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise ValueError("Enter a valid email address")
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters")
+
     with get_db() as db:
         # Check if user exists
         existing = db.query(User).filter(
-            (User.username == username) | (User.email == email)
+            User.username.ilike(username) | User.email.ilike(email)
         ).first()
         
         if existing:
@@ -234,15 +233,7 @@ def logout():
     if "session_token" in st.session_state and st.session_state.session_token:
         invalidate_token(st.session_state.session_token)
     
-    # Clear browser storage
-    components.html(
-        """
-        <script>
-            localStorage.removeItem('kilele_session_token');
-        </script>
-        """,
-        height=0,
-    )
+    clear_token_from_browser()
     
     # Clear session state
     st.session_state.authenticated = False
@@ -253,19 +244,12 @@ def logout():
 
 def save_token_to_browser(token: str):
     """Save session token to browser localStorage for persistent login"""
-    components.html(
-        f"""
-        <script>
-            localStorage.setItem('kilele_session_token', '{token}');
-        </script>
-        """,
-        height=0,
-    )
+    persist_token(token)
 
 def restore_session_from_storage():
     """
     Restore session from browser localStorage on page load
-    Keeps Nesh logged in across page refreshes
+    Keeps a remembered user logged in across page refreshes
     """
     try:
         # Only try to restore if not already authenticated
@@ -274,33 +258,14 @@ def restore_session_from_storage():
                 st.session_state.token_restore_attempted = False
             
             if not st.session_state.token_restore_attempted:
-                # JavaScript to read token from localStorage
-                token = components.html(
-                    """
-                    <script>
-                        const token = localStorage.getItem('kilele_session_token');
-                        if (token) {
-                            window.parent.postMessage({
-                                type: 'streamlit:setComponentValue',
-                                value: token
-                            }, '*');
-                        } else {
-                            window.parent.postMessage({
-                                type: 'streamlit:setComponentValue',
-                                value: ''
-                            }, '*');
-                        }
-                    </script>
-                    """,
-                    height=0,
-                )
+                token = load_token_from_browser()
                 
                 if token and isinstance(token, str) and len(token) > 0:
                     st.session_state.session_token = token
                     st.session_state.token_restore_attempted = True
                     # is_authenticated() will validate and restore the full session
                     is_authenticated()
-                else:
+                elif token is not None:
                     st.session_state.token_restore_attempted = True
     except Exception:
         # Silently fail if called before Streamlit is ready

@@ -3,7 +3,7 @@ Unified database module for Streamlit app
 SQLAlchemy with SQLite/PostgreSQL support
 """
 import streamlit as st
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
@@ -64,6 +64,40 @@ def init_database():
     """Initialize database tables"""
     from models import Base as ModelsBase
     ModelsBase.metadata.create_all(bind=engine)
+    _ensure_review_columns()
+    _ensure_bookmark_columns()
+
+
+def _ensure_review_columns():
+    """Add review fields introduced after the first deployment."""
+    inspector = inspect(engine)
+    if "reviews" not in inspector.get_table_names():
+        return
+
+    existing = {column["name"] for column in inspector.get_columns("reviews")}
+    statements = []
+    if "visited_date" not in existing:
+        date_type = "DATETIME" if engine.dialect.name == "sqlite" else "TIMESTAMP"
+        statements.append(f"ALTER TABLE reviews ADD COLUMN visited_date {date_type}")
+    if "helpful_count" not in existing:
+        statements.append("ALTER TABLE reviews ADD COLUMN helpful_count INTEGER DEFAULT 0")
+
+    if statements:
+        with engine.begin() as connection:
+            for statement in statements:
+                connection.execute(text(statement))
+
+
+def _ensure_bookmark_columns():
+    """Add bookmark notes to databases created by older releases."""
+    inspector = inspect(engine)
+    if "bookmarks" not in inspector.get_table_names():
+        return
+
+    existing = {column["name"] for column in inspector.get_columns("bookmarks")}
+    if "notes" not in existing:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE bookmarks ADD COLUMN notes TEXT"))
 
 @st.cache_resource
 def get_engine():

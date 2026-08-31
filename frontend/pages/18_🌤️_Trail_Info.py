@@ -15,7 +15,7 @@ apply_nature_theme()
 # Check if user is logged in
 if 'user' not in st.session_state:
     st.warning("⚠️ Please log in to report trail conditions or add equipment")
-    st.page_link("pages/3_🔐_Login.py", label="Go to Login", icon="🔐")
+    st.page_link("pages/0_🔐_Login.py", label="Go to Login", icon="🔐")
     st.stop()
 
 user = st.session_state.user
@@ -124,7 +124,7 @@ if selected_trail:
                     help="Required - Share helpful details"
                 )
                 
-                submit = st.form_submit_button("Submit Report", type="primary", use_container_width=True)
+                submit = st.form_submit_button("Submit Report", type="primary", width="stretch")
                 
                 if submit:
                     if not notes:
@@ -214,7 +214,7 @@ if selected_trail:
                         placeholder="Additional details about this item"
                     )
                     
-                    submit = st.form_submit_button("Add Item", type="primary", use_container_width=True)
+                    submit = st.form_submit_button("Add Item", type="primary", width="stretch")
                     
                     if submit:
                         if not item_name:

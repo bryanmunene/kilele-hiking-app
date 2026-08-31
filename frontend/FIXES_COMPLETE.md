@@ -80,8 +80,8 @@
 ### **Database Content:**
 - 7 Hiking Trails (all with local images)
 - 2 Test Users:
-  - admin / admin123 (admin privileges)
-  - demo / demo123 (regular user)
+  - Personal accounts created from the Login page
+  - Personal accounts created from the Login page
 - Achievement system ready
 - Social features ready
 
@@ -98,7 +98,7 @@
 ## 🚀 Next Steps (Optional)
 
 ### Immediate Use:
-1. **Login:** Use admin/admin123 or demo/demo123
+1. **Login:** Create and use a personal account
 2. **Browse Trails:** All 7 Kenyan trails with images
 3. **Add Trails:** Create your own hiking trails
 4. **Track Hikes:** Start tracking your adventures
@@ -116,12 +116,12 @@
 
 **Admin Account:**
 - Username: admin
-- Password: admin123
+- Password: your personal password
 - Has admin privileges
 
 **Demo Account:**
 - Username: demo  
-- Password: demo123
+- Password: your personal password
 - Regular user account
 
 ## 🎯 Deployment Ready

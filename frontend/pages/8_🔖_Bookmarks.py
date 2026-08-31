@@ -83,21 +83,6 @@ def add_bookmark(hike_id, notes=None):
         st.error(f"Error: {e}")
         return False
 
-def remove_bookmark(bookmark_id):
-    """Remove a trail from bookmarks"""
-    try:
-        result = delete_bookmark(bookmark_id)
-        if result:
-            st.success("✅ Bookmark removed")
-            st.cache_data.clear()
-            return True
-        else:
-            st.error("❌ Failed to remove bookmark")
-        return False
-    except Exception as e:
-        st.error(f"Error: {e}")
-        return False
-
 def get_difficulty_class(difficulty):
     """Get CSS class for difficulty level"""
     difficulty_map = {
@@ -224,12 +209,12 @@ with tab1:
                 
                 with col2:
                     # Action buttons
-                    if st.button("🗺️ View", key=f"view_{bookmark['id']}", use_container_width=True):
-                        st.session_state['selected_trail'] = hike
+                    if st.button("🗺️ View", key=f"view_{bookmark['id']}", width="stretch"):
+                        st.session_state['selected_hike_id'] = hike['id']
                         st.switch_page("pages/1_🗺️_Map_View.py")
                     
-                    if st.button("🗑️ Remove", key=f"remove_{bookmark['id']}", use_container_width=True, type="secondary"):
-                        if remove_bookmark(bookmark['id']):
+                    if st.button("🗑️ Remove", key=f"remove_{bookmark['id']}", width="stretch", type="secondary"):
+                        if remove_bookmark_trail(hike['id']):
                             st.rerun()
                 
                 st.markdown("---")
@@ -291,7 +276,7 @@ with tab2:
                     help="Add notes to remember why you bookmarked this trail or any plans you have"
                 )
                 
-                submitted = st.form_submit_button("🔖 Bookmark Trail", use_container_width=True)
+                submitted = st.form_submit_button("🔖 Bookmark Trail", width="stretch")
                 
                 if submitted and selected_hike:
                     if add_bookmark(selected_hike['id'], notes):

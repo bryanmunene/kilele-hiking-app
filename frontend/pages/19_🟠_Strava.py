@@ -22,8 +22,47 @@ st.title("🟠 Connect to Strava")
 st.markdown("*Automatically sync your hiking activities from Strava*")
 st.markdown("---")
 
-# API base URL (update this for production)
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+def configured_api_url():
+    """Return the deployed integration service URL, if one is configured."""
+    environment_url = os.getenv("API_BASE_URL", "").strip()
+    if environment_url:
+        return environment_url.rstrip("/")
+    try:
+        return str(st.secrets.get("API_BASE_URL", "")).strip().rstrip("/")
+    except (FileNotFoundError, KeyError):
+        return ""
+
+
+API_BASE_URL = configured_api_url()
+
+if not API_BASE_URL:
+    st.info(
+        "Strava sync is ready for connection, but the integration service has not "
+        "been configured for this deployment yet."
+    )
+    st.markdown(
+        """
+        ### When connected
+
+        - Import GPS distance, time, and elevation from Strava
+        - Match activities to Kilele trails
+        - Keep achievements and hiking history in one place
+
+        No request will be sent until the site owner configures a secure backend URL.
+        """
+    )
+    with st.expander("Deployment setup"):
+        st.code(
+            "API_BASE_URL=https://your-kilele-api.example.com\n"
+            "STRAVA_CLIENT_ID=...\n"
+            "STRAVA_CLIENT_SECRET=...",
+            language="bash",
+        )
+        st.caption(
+            "Set API_BASE_URL in Streamlit secrets or the deployment environment, "
+            "then keep Strava credentials on the backend only."
+        )
+    st.stop()
 
 # Check connection status
 @st.cache_data(ttl=60)
@@ -75,7 +114,7 @@ if is_connected:
         
         days = st.slider("Sync activities from last X days", 7, 365, 30)
         
-        if st.button("🔄 Sync Now", type="primary", use_container_width=True):
+        if st.button("🔄 Sync Now", type="primary", width="stretch"):
             with st.spinner("Syncing activities from Strava..."):
                 try:
                     response = requests.post(
@@ -99,7 +138,7 @@ if is_connected:
         # Auto-sync toggle
         sync_enabled = st.toggle("Enable auto-sync", value=True)
         
-        if st.button("💾 Save Settings", use_container_width=True):
+        if st.button("💾 Save Settings", width="stretch"):
             try:
                 response = requests.post(
                     f"{API_BASE_URL}/api/strava/toggle-autosync?enabled={sync_enabled}",
@@ -115,7 +154,7 @@ if is_connected:
         
         st.markdown("---")
         
-        if st.button("🔌 Disconnect Strava", type="secondary", use_container_width=True):
+        if st.button("🔌 Disconnect Strava", type="secondary", width="stretch"):
             try:
                 response = requests.delete(
                     f"{API_BASE_URL}/api/strava/disconnect",
@@ -157,7 +196,7 @@ if is_connected:
                     "Trail Match": "✅ " + act['matched_trail_name'] if act['is_matched'] else "❌ Not matched"
                 } for act in activities])
                 
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width="stretch", hide_index=True)
             else:
                 st.info("No activities synced yet. Click 'Sync Now' above.")
     except Exception as e:
@@ -191,7 +230,7 @@ else:
     st.markdown("---")
     
     # Connect button
-    if st.button("🟠 Connect Strava", type="primary", use_container_width=True):
+    if st.button("🟠 Connect Strava", type="primary", width="stretch"):
         try:
             response = requests.get(
                 f"{API_BASE_URL}/api/strava/connect",

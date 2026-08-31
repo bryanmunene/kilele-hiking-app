@@ -213,7 +213,7 @@ async def disconnect_strava(
 
 
 # Webhook endpoints
-WEBHOOK_VERIFY_TOKEN = os.getenv("STRAVA_WEBHOOK_VERIFY_TOKEN", "kilele_hiking_app_2026")
+WEBHOOK_VERIFY_TOKEN = os.getenv("STRAVA_WEBHOOK_VERIFY_TOKEN")
 
 
 @router.get("/webhook")
@@ -221,6 +221,12 @@ async def webhook_verify(request: Request):
     """
     Verify webhook subscription with Strava
     """
+    if not WEBHOOK_VERIFY_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="Strava webhook verification is not configured",
+        )
+
     params = dict(request.query_params)
     
     # Strava sends: hub.mode, hub.challenge, hub.verify_token

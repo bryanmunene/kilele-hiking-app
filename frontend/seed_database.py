@@ -4,8 +4,7 @@ Run this once to populate the database with initial data
 """
 import sys
 from database import init_database, get_db
-from models import Hike, User, Equipment
-from auth import hash_password
+from models import Hike, Equipment
 from datetime import datetime
 
 def seed_database():
@@ -129,33 +128,6 @@ def seed_database():
         db.add_all(hikes)
         print(f"✅ Added {len(hikes)} hiking trails")
         
-        # Create test users (optional)
-        test_users = [
-            User(
-                username="admin",
-                email="admin@kilele.ke",
-                hashed_password=hash_password("admin123"),
-                full_name="Admin User",
-                is_admin=True
-            ),
-            User(
-                username="Nesh",
-                email="nesh@kilele.ke",
-                hashed_password=hash_password("password123"),
-                full_name="Nesh",
-                is_admin=True
-            ),
-            User(
-                username="demo",
-                email="demo@kilele.ke",
-                hashed_password=hash_password("demo123"),
-                full_name="Demo Hiker"
-            )
-        ]
-        
-        db.add_all(test_users)
-        print(f"✅ Added {len(test_users)} test users")
-        
         # Seed hiking gear catalog
         gear_items = [
             # Footwear
@@ -269,10 +241,6 @@ def seed_database():
         print(f"✅ Added {len(gear_items)} gear items to catalog")
         
         print("\n🎉 Database seeding completed successfully!")
-        print("\n📝 Test Accounts:")
-        print("   Admin: username='admin', password='admin123'")
-        print("   Nesh:  username='Nesh', password='password123' (ADMIN)")
-        print("   Demo:  username='demo', password='demo123'")
 
 if __name__ == "__main__":
     seed_database()

@@ -35,7 +35,7 @@ class OfflineCache:
         save_to_browser('kilele_offline_hike', json.dumps(cached_data))
         
     @staticmethod
-    def get_cached_hike() -> Optional[Dict[str, Any]]:
+    def get_cached_hike(instance: str = "") -> Optional[Dict[str, Any]]:
         """
         Retrieve cached hike data
         
@@ -52,7 +52,7 @@ class OfflineCache:
         
         # Try browser localStorage
         from browser_storage import load_from_browser
-        cached_str = load_from_browser('kilele_offline_hike')
+        cached_str = load_from_browser('kilele_offline_hike', instance=instance)
         
         if cached_str:
             try:
@@ -92,22 +92,17 @@ class OfflineCache:
 
 
 def check_internet_connection() -> bool:
-    """
-    Check if internet connection is available
-    
-    Returns:
-        True if online, False if offline
-    """
-    try:
-        import requests
-        response = requests.get('https://www.google.com', timeout=3)
-        return response.status_code == 200
-    except:
-        return False
+    """Return the user's explicit connectivity mode."""
+    return not st.session_state.get("offline_mode", False)
 
 
 def show_offline_indicator():
     """Display offline mode indicator"""
+    st.sidebar.toggle(
+        "Offline mode",
+        key="offline_mode",
+        help="Enable before a hike when you expect to lose data service.",
+    )
     if not check_internet_connection():
         st.warning("📡 **Offline Mode** - Using cached data. GPS tracking will still work!", icon="⚠️")
         return True
@@ -147,9 +142,13 @@ def prepare_offline_hike_ui(hike_id: int, hike_data: Dict[str, Any]):
         """)
     
     # Check if already cached
-    cached = OfflineCache.get_cached_hike()
+    cached = OfflineCache.get_cached_hike(instance=str(hike_id))
     is_cached = cached and cached['hike'].get('id') == hike_id
-    is_fresh = OfflineCache.is_data_fresh() if is_cached else False
+    if is_cached:
+        cached_at = datetime.fromisoformat(cached['cached_at'])
+        is_fresh = (datetime.now() - cached_at).total_seconds() < 12 * 3600
+    else:
+        is_fresh = False
     
     col1, col2 = st.columns([3, 1])
     
@@ -168,14 +167,23 @@ def prepare_offline_hike_ui(hike_id: int, hike_data: Dict[str, Any]):
             
             st.success(f"✅ Trail data is cached and ready for offline use (downloaded {time_str})")
             
-            if st.button("🔄 Refresh Cached Data", use_container_width=True):
+            if st.button(
+                "🔄 Refresh Cached Data",
+                key=f"refresh_offline_{hike_id}",
+                width="stretch",
+            ):
                 fetch_and_cache_trail_data(hike_id, hike_data)
                 st.rerun()
         else:
             st.info("💡 Download trail data to use this hike offline")
     
     with col2:
-        if st.button("📥 Download", type="primary", use_container_width=True):
+        if st.button(
+            "📥 Download",
+            key=f"download_offline_{hike_id}",
+            type="primary",
+            width="stretch",
+        ):
             with st.spinner("Downloading trail data..."):
                 fetch_and_cache_trail_data(hike_id, hike_data)
                 st.success("✅ Ready for offline use!")

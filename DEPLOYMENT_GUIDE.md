@@ -177,7 +177,7 @@ This means:
    ```toml
    # On Streamlit Cloud: Settings → Secrets
    [secrets]
-   SECRET_KEY = "your-secret-key-here"
+   SECRET_KEY = <GENERATE_A_STRONG_RANDOM_VALUE>
    ```
 
 3. **Change default passwords** after deployment:

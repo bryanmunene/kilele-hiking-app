@@ -13,7 +13,7 @@ Your app has been successfully converted to a **single-service architecture**! N
 ✅ **Wearable Parser**: GPX/FIT/TCX support  
 ✅ **Requirements**: Updated with all dependencies  
 ✅ **Documentation**: Complete migration guide  
-✅ **Seed Script**: Database initialization with test data  
+✅ **Seed Script**: Database initialization with trail and gear data
 
 ⏳ **What Remains**: Update 14 page files to use new architecture (pattern provided)
 
@@ -39,13 +39,11 @@ python seed_database.py
 🌱 Starting database seeding...
 ✅ Database tables created
 ✅ Added 7 hiking trails
-✅ Added 2 test users
+✅ Added 23 gear items to catalog
 🎉 Database seeding completed successfully!
-
-📝 Test Accounts:
-   Admin: username='admin', password='admin123'
-   Demo:  username='demo', password='demo123'
 ```
+
+Create your own account from the Login page. No shared default credentials are seeded.
 
 ### Step 3: Test the Migration Example
 ```bash

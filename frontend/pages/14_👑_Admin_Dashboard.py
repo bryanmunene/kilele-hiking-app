@@ -34,8 +34,8 @@ if not is_authenticated():
 
 user = get_current_user()
 
-# Check admin privileges (Nesh always has access)
-if not user.get('is_admin', False) and user.get('username') != 'Nesh':
+# Check database-controlled admin privileges
+if not user.get('is_admin', False):
     st.error("🚫 Access Denied")
     st.warning("This page is only accessible to administrators.")
     st.info("If you believe you should have access, please contact the system administrator.")
@@ -108,7 +108,7 @@ with tab1:
         }
         fig = px.pie(user_data, values='Count', names='Status', 
                      color_discrete_sequence=['#2e7d32', '#d32f2f'])
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     
     with col2:
         st.subheader("📊 Content Statistics")
@@ -119,7 +119,7 @@ with tab1:
         }
         fig = px.bar(content_data, x='Type', y='Count', 
                     color='Type', color_discrete_sequence=['#1976d2', '#2e7d32', '#f57c00', '#7b1fa2'])
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 # TAB 2: USER MANAGEMENT
 with tab2:

@@ -1,117 +1,93 @@
-"""
-Browser storage helper for persistent login
-Uses JavaScript localStorage to persist session tokens across page refreshes
-"""
+"""Small Streamlit v2 component for safe browser-local persistence."""
+
+import hashlib
+
 import streamlit as st
-import streamlit.components.v1 as components
-import json
-
-def save_token_to_browser(token: str):
-    """Save session token to browser localStorage"""
-    components.html(
-        f"""
-        <script>
-            localStorage.setItem('kilele_session_token', '{token}');
-            window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'saved'}}, '*');
-        </script>
-        """,
-        height=0,
-    )
-
-def load_token_from_browser():
-    """Load session token from browser localStorage"""
-    token = components.html(
-        """
-        <script>
-            const token = localStorage.getItem('kilele_session_token');
-            window.parent.postMessage({type: 'streamlit:setComponentValue', value: token || ''}, '*');
-        </script>
-        """,
-        height=0,
-    )
-    return token if token else None
-
-def clear_token_from_browser():
-    """Clear session token from browser localStorage"""
-    components.html(
-        """
-        <script>
-            localStorage.removeItem('kilele_session_token');
-            window.parent.postMessage({type: 'streamlit:setComponentValue', value: 'cleared'}, '*');
-        </script>
-        """,
-        height=0,
-    )
-
-def restore_session_from_browser():
-    """
-    Restore session from browser localStorage on page load
-    Call this at the start of your app
-    """
-    # Only try to restore if not already authenticated
-    if "authenticated" not in st.session_state or not st.session_state.authenticated:
-        if "token_loaded" not in st.session_state:
-            st.session_state.token_loaded = False
-        
-        if not st.session_state.token_loaded:
-            # Try to load token from browser
-            token = load_token_from_browser()
-            if token:
-                st.session_state.session_token = token
-                st.session_state.token_loaded = True
-                # The is_authenticated() function will validate and restore the session
 
 
-def save_to_browser(key: str, value: str):
-    """Save generic data to browser localStorage"""
-    # Escape single quotes in value
-    escaped_value = value.replace("'", "\\'").replace("\n", "\\n")
-    components.html(
-        f"""
-        <script>
-            try {{
-                localStorage.setItem('{key}', '{escaped_value}');
-                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'saved'}}, '*');
-            }} catch(e) {{
-                console.error('Error saving to localStorage:', e);
-            }}
-        </script>
-        """,
+_STORAGE_JS = """
+export default function(component) {
+    const { data, setStateValue } = component;
+    const storageKey = data.key;
+
+    try {
+        if (data.action === "set") {
+            localStorage.setItem(storageKey, data.value);
+        } else if (data.action === "remove") {
+            localStorage.removeItem(storageKey);
+        } else if (data.action === "get") {
+            setStateValue("value", localStorage.getItem(storageKey) || "");
+        }
+    } catch (error) {
+        if (data.action === "get") {
+            setStateValue("value", "");
+        }
+    }
+}
+"""
+
+_browser_storage = st.components.v2.component(
+    "kilele_browser_storage",
+    js=_STORAGE_JS,
+)
+
+
+def _instance_key(action: str, key: str, instance: str = "") -> str:
+    digest = hashlib.sha256(f"{key}:{instance}".encode("utf-8")).hexdigest()[:12]
+    return f"kilele_storage_{action}_{digest}"
+
+
+def _no_op() -> None:
+    """State-change callback required by Streamlit component state."""
+
+
+def save_to_browser(key: str, value: str) -> None:
+    """Save a string to localStorage."""
+    _browser_storage(
+        key=_instance_key("set", key),
+        data={"action": "set", "key": key, "value": value},
         height=0,
     )
 
 
-def load_from_browser(key: str):
-    """Load generic data from browser localStorage"""
-    value = components.html(
-        f"""
-        <script>
-            try {{
-                const value = localStorage.getItem('{key}');
-                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: value || ''}}, '*');
-            }} catch(e) {{
-                console.error('Error loading from localStorage:', e);
-                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: ''}}, '*');
-            }}
-        </script>
-        """,
+def load_from_browser(key: str, instance: str = "") -> str | None:
+    """Load a string from localStorage after the component's first rerun."""
+    result = _browser_storage(
+        key=_instance_key("get", key, instance),
+        data={"action": "get", "key": key},
+        default={"value": None},
         height=0,
+        on_value_change=_no_op,
     )
-    return value if value else None
+    return result.value
 
 
-def clear_from_browser(key: str):
-    """Clear specific data from browser localStorage"""
-    components.html(
-        f"""
-        <script>
-            try {{
-                localStorage.removeItem('{key}');
-                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'cleared'}}, '*');
-            }} catch(e) {{
-                console.error('Error clearing from localStorage:', e);
-            }}
-        </script>
-        """,
+def clear_from_browser(key: str) -> None:
+    """Remove a localStorage value."""
+    _browser_storage(
+        key=_instance_key("remove", key),
+        data={"action": "remove", "key": key},
         height=0,
     )
+
+
+def save_token_to_browser(token: str) -> None:
+    save_to_browser("kilele_session_token", token)
+
+
+def load_token_from_browser() -> str | None:
+    return load_from_browser("kilele_session_token")
+
+
+def clear_token_from_browser() -> None:
+    clear_from_browser("kilele_session_token")
+
+
+def restore_session_from_browser() -> None:
+    """Place a remembered token into session state when available."""
+    if st.session_state.get("authenticated"):
+        return
+
+    token = load_token_from_browser()
+    if token:
+        st.session_state.session_token = token

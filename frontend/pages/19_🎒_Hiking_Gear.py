@@ -181,7 +181,7 @@ else:
                     
                     # Image
                     if gear['image_url']:
-                        display_image(gear['image_url'], caption="", use_column_width=True)
+                        display_image(gear['image_url'], caption="", width="stretch")
                     else:
                         st.markdown("🎒")
                     

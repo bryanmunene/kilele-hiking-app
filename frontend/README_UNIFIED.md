@@ -61,7 +61,9 @@ python seed_database.py
 This creates:
 - `kilele.db` SQLite database
 - 7 hiking trails
-- 2 test users: `admin/admin123` and `demo/demo123`
+- 23 gear catalogue items
+
+Create your own account from the Login page; shared default credentials are not seeded.
 
 ### 3. Run the App
 
