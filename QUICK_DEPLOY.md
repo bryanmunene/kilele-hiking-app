@@ -10,7 +10,7 @@ All necessary files have been created. Follow these steps to deploy:
 
 ### 1. Your Generated Secret Key (SAVE THIS!)
 ```
-SECRET_KEY=fe8abec15c9f12e6ef3e47924342c2e90f2cfcae9f90d22171438a69ff0e3f90
+SECRET_KEY=<GENERATE_A_STRONG_RANDOM_VALUE>
 ```
 
 ### 2. Initialize Git Repository
@@ -53,7 +53,7 @@ git push -u origin main
 4. **Configure Environment Variables**:
    Go to your service → Variables → Add:
    ```
-   SECRET_KEY=fe8abec15c9f12e6ef3e47924342c2e90f2cfcae9f90d22171438a69ff0e3f90
+   SECRET_KEY=<GENERATE_A_STRONG_RANDOM_VALUE>
    ALGORITHM=HS256
    ACCESS_TOKEN_EXPIRE_MINUTES=30
    ALLOWED_ORIGINS=*
@@ -86,7 +86,7 @@ railway init
 railway add
 
 # Set environment variables
-railway variables set SECRET_KEY=fe8abec15c9f12e6ef3e47924342c2e90f2cfcae9f90d22171438a69ff0e3f90
+railway variables set SECRET_KEY=<GENERATE_A_STRONG_RANDOM_VALUE>
 
 # Deploy
 railway up

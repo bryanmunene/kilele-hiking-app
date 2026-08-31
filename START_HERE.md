@@ -21,11 +21,11 @@ DATABASE_URL=sqlite:///./kilele.db
 API_HOST=0.0.0.0
 PORT=${{PORT}}
 DEBUG=False
-SECRET_KEY=kilele_hiking_app_secret_key_production_2026
+SECRET_KEY=<GENERATE_A_STRONG_RANDOM_VALUE>
 STRAVA_CLIENT_ID=199882
-STRAVA_CLIENT_SECRET=5ddc762ef5621ee2ad9de18e19b3adb4c05691e9
+STRAVA_CLIENT_SECRET=<SET_IN_DEPLOYMENT_SECRETS>
 STRAVA_REDIRECT_URI=https://kilele-app.streamlit.app/strava/callback
-STRAVA_WEBHOOK_VERIFY_TOKEN=kilele_strava_webhook_2026
+STRAVA_WEBHOOK_VERIFY_TOKEN=<SET_IN_DEPLOYMENT_SECRETS>
 ```
 
 ### 2️⃣ Deploy Frontend (Streamlit Cloud) - 15 min

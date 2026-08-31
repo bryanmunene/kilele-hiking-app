@@ -179,7 +179,7 @@ STRAVA_CLIENT_SECRET=your_secret_here
 
 # Optional (has defaults)
 STRAVA_REDIRECT_URI=http://localhost:8501/strava/callback
-STRAVA_WEBHOOK_VERIFY_TOKEN=random_token_123
+STRAVA_WEBHOOK_VERIFY_TOKEN=<SET_IN_DEPLOYMENT_SECRETS>
 ```
 
 ### API Base URL (Frontend)

@@ -26,9 +26,9 @@ Edit `backend/.env` file and uncomment/add these lines:
 ```bash
 # Strava API Integration
 STRAVA_CLIENT_ID=12345  # Replace with your actual Client ID
-STRAVA_CLIENT_SECRET=abcdef123456789  # Replace with your actual Client Secret
+STRAVA_CLIENT_SECRET=<SET_IN_DEPLOYMENT_SECRETS>  # Replace with your actual Client Secret
 STRAVA_REDIRECT_URI=http://localhost:8501/strava/callback
-STRAVA_WEBHOOK_VERIFY_TOKEN=kilele_strava_webhook_2026  # Any random string
+STRAVA_WEBHOOK_VERIFY_TOKEN=<SET_IN_DEPLOYMENT_SECRETS>  # Any random string
 ```
 
 ### 3. Restart Backend Server

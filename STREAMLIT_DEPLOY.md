@@ -97,7 +97,7 @@ Railway will try to deploy the whole project. We need to tell it to use only the
 3. Click **"New Variable"** and add these:
 
 ```
-SECRET_KEY=fe8abec15c9f12e6ef3e47924342c2e90f2cfcae9f90d22171438a69ff0e3f90
+SECRET_KEY=<GENERATE_A_STRONG_RANDOM_VALUE>
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ALLOWED_ORIGINS=*
