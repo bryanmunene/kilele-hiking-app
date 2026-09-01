@@ -13,6 +13,6 @@ try:
             traces_sample_rate=0.1,  # Lower for Streamlit
             send_default_pii=False,
         )
-        print(f"✅ Sentry initialized ({settings.ENVIRONMENT})")
+        print(f"Sentry initialized ({settings.ENVIRONMENT})")
 except Exception as e:
-    print(f"⚠️ Sentry not configured: {e}")
+    print(f"Sentry not configured: {e}")

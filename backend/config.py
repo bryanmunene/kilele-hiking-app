@@ -40,11 +40,15 @@ class Settings:
     
     # API
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
-    CORS_ORIGINS: list = os.getenv("CORS_ORIGINS", "*").split(",")
+    CORS_ORIGINS: list = [
+        origin.strip()
+        for origin in os.getenv("CORS_ORIGINS", "*").split(",")
+        if origin.strip()
+    ] or ["*"]
     
     # Application
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
-    DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
+    DEBUG: bool = os.getenv("DEBUG", "True").lower() in {"1", "true", "yes", "on"}
     TIMEZONE: str = os.getenv("TIMEZONE", "Africa/Nairobi")
     MAX_UPLOAD_SIZE_MB: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
     
@@ -69,17 +73,17 @@ class Settings:
     @property
     def is_production(self) -> bool:
         """Check if running in production"""
-        return self.ENVIRONMENT == "production"
+        return self.ENVIRONMENT.lower() == "production"
     
     @property
     def is_development(self) -> bool:
         """Check if running in development"""
-        return self.ENVIRONMENT == "development"
+        return self.ENVIRONMENT.lower() == "development"
     
     @property
     def use_postgresql(self) -> bool:
         """Check if using PostgreSQL"""
-        return self.DATABASE_URL.startswith("postgresql")
+        return self.DATABASE_URL.startswith(("postgresql", "postgres://"))
     
     @property
     def has_cloudinary(self) -> bool:
@@ -103,6 +107,34 @@ class Settings:
     def has_sentry(self) -> bool:
         """Check if Sentry is configured"""
         return bool(self.SENTRY_DSN)
+
+    def production_errors(self) -> list[str]:
+        """Return configuration problems that should block production startup."""
+        if not self.is_production:
+            return []
+
+        errors = []
+        unsafe_secret_values = {
+            "",
+            "dev-secret-key-change-in-production",
+            "your-secret-key-change-this-in-production",
+            "your-secret-key-here-change-this-in-production",
+        }
+        if self.SECRET_KEY in unsafe_secret_values or len(self.SECRET_KEY) < 32:
+            errors.append("SECRET_KEY must be set to a unique value of at least 32 characters.")
+        if self.DEBUG:
+            errors.append("DEBUG must be False when ENVIRONMENT=production.")
+        if self.CORS_ORIGINS == ["*"]:
+            errors.append("CORS_ORIGINS must list explicit frontend origins in production.")
+        if self.DATABASE_URL.startswith("sqlite") and os.getenv("ALLOW_SQLITE_IN_PRODUCTION", "").lower() not in {"1", "true", "yes"}:
+            errors.append("DATABASE_URL should point to PostgreSQL in production, or set ALLOW_SQLITE_IN_PRODUCTION=true knowingly.")
+        return errors
+
+    def validate_for_runtime(self) -> None:
+        """Fail fast on unsafe production settings."""
+        errors = self.production_errors()
+        if errors:
+            raise RuntimeError("Invalid production configuration: " + " ".join(errors))
 
 # Global settings instance
 settings = Settings()

@@ -37,6 +37,8 @@ class PlannedHike(Base):
     transport_mode = Column(String, default="self_drive")  # self_drive, carpool, public_transport
     meeting_point = Column(String)  # GPS coordinates or description
     driving_directions = Column(JSON)  # Waypoints for self-drive
+    price = Column(Float, default=0)
+    max_participants = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

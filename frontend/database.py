@@ -17,6 +17,16 @@ except ImportError:
     DATABASE_PATH = os.path.join(os.path.dirname(__file__), "kilele.db")
     DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
+
+def normalize_database_url(url: str) -> str:
+    """Normalize platform-provided database URLs for SQLAlchemy."""
+    if url.startswith("postgres://"):
+        return "postgresql://" + url[len("postgres://"):]
+    return url
+
+
+DATABASE_URL = normalize_database_url(DATABASE_URL)
+
 # Database engine configuration
 engine_kwargs = {}
 
@@ -59,46 +69,87 @@ def get_db():
     finally:
         db.close()
 
-def _add_missing_sqlite_columns():
-    """Apply small, backwards-compatible SQLite migrations."""
-    if engine.dialect.name != "sqlite":
-        return
+def _column_sql(column_type: str) -> str:
+    dialect = engine.dialect.name
+    type_map = {
+        "boolean": "BOOLEAN",
+        "datetime": "DATETIME" if dialect == "sqlite" else "TIMESTAMP",
+        "float": "FLOAT",
+        "integer": "INTEGER",
+        "json": "JSON" if dialect == "sqlite" else "JSONB",
+        "string": "VARCHAR",
+        "text": "TEXT",
+    }
+    return type_map[column_type]
 
+
+def _default_sql(default: str | None) -> str:
+    if default is None:
+        return ""
+    return f" DEFAULT {default}"
+
+
+def _add_missing_columns():
+    """Apply small, backwards-compatible migrations for shared deployments."""
     migrations = {
         "users": {
-            "bio": "TEXT",
-            "experience_level": "VARCHAR DEFAULT 'Beginner'",
-            "is_admin": "BOOLEAN DEFAULT 0",
-            "two_factor_secret": "VARCHAR",
-            "two_factor_enabled": "BOOLEAN DEFAULT 0",
+            "bio": ("text", None),
+            "experience_level": ("string", "'Beginner'"),
+            "is_admin": ("boolean", "false"),
+            "two_factor_secret": ("string", None),
+            "two_factor_enabled": ("boolean", "false"),
+            "two_fa_secret": ("string", None),
+            "two_fa_enabled": ("boolean", "false"),
+            "last_login": ("datetime", None),
         },
         "reviews": {
-            "title": "VARCHAR",
-            "difficulty_rating": "INTEGER",
-            "trail_condition": "VARCHAR",
-            "conditions": "TEXT",
-            "visited_date": "DATETIME",
-            "helpful_count": "INTEGER DEFAULT 0",
+            "title": ("string", None),
+            "difficulty_rating": ("string", None),
+            "trail_condition": ("string", None),
+            "conditions": ("text", None),
+            "visited_date": ("datetime", None),
+            "helpful_count": ("integer", "0"),
+            "photos": ("json", None),
         },
         "bookmarks": {
-            "notes": "VARCHAR(500)",
+            "notes": ("string", None),
         },
         "achievements": {
-            "category": "VARCHAR DEFAULT 'milestones'",
-            "requirement": "VARCHAR",
-            "requirement_type": "VARCHAR",
-            "requirement_value": "FLOAT DEFAULT 0",
+            "category": ("string", "'milestones'"),
+            "requirement": ("string", None),
+            "requirement_type": ("string", None),
+            "requirement_value": ("float", "0"),
         },
         "user_achievements": {
-            "progress": "INTEGER DEFAULT 0",
-            "completed": "BOOLEAN DEFAULT 0",
+            "progress": ("integer", "0"),
+            "completed": ("boolean", "false"),
+        },
+        "conversation_participants": {
+            "joined_at": ("datetime", None),
+            "last_read_at": ("datetime", None),
+            "created_at": ("datetime", None),
+        },
+        "hike_sessions": {
+            "completed_at": ("datetime", None),
+            "is_active": ("boolean", "true"),
+            "current_latitude": ("float", None),
+            "current_longitude": ("float", None),
+            "distance_covered_km": ("float", "0"),
+            "duration_minutes": ("integer", "0"),
+            "duration_hours": ("float", "0"),
+            "elevation_gain_m": ("float", "0"),
+            "route_data": ("text", None),
+            "rating": ("integer", None),
+        },
+        "messages": {
+            "updated_at": ("datetime", None),
         },
         "goals": {
-            "completed_at": "DATETIME",
+            "completed_at": ("datetime", None),
         },
         "planned_hikes": {
-            "price": "FLOAT DEFAULT 0",
-            "max_participants": "INTEGER",
+            "price": ("float", "0"),
+            "max_participants": ("integer", None),
         },
     }
 
@@ -110,11 +161,10 @@ def _add_missing_sqlite_columns():
             if table_name not in existing_tables:
                 continue
 
-            existing_columns = {
-                row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table_name})")
-            }
-            for column_name, column_sql in columns.items():
+            existing_columns = {column["name"] for column in inspector.get_columns(table_name)}
+            for column_name, (column_type, default) in columns.items():
                 if column_name not in existing_columns:
+                    column_sql = f"{_column_sql(column_type)}{_default_sql(default)}"
                     conn.exec_driver_sql(
                         f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
                     )
@@ -124,7 +174,7 @@ def init_database():
     """Initialize database tables and apply lightweight local migrations."""
     from models import Base as ModelsBase
     ModelsBase.metadata.create_all(bind=engine)
-    _add_missing_sqlite_columns()
+    _add_missing_columns()
 
 @st.cache_resource
 def get_engine():

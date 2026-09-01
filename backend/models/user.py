@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -10,11 +10,16 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(100), unique=True, nullable=False, index=True)
     full_name = Column(String(100))
+    bio = Column(Text)
     hashed_password = Column(String(200), nullable=False)
     is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
     profile_picture = Column(String(255), nullable=True)  # Path to profile picture
+    experience_level = Column(String(50), default="Beginner")
     two_fa_enabled = Column(Boolean, default=False)
     two_fa_secret = Column(String(32), nullable=True)  # Secret for 2FA
+    two_factor_enabled = Column(Boolean, default=False)
+    two_factor_secret = Column(String(32), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_login = Column(DateTime(timezone=True))
     
@@ -33,9 +38,13 @@ class User(Base):
             "username": self.username,
             "email": self.email,
             "full_name": self.full_name,
+            "bio": self.bio,
             "is_active": self.is_active,
+            "is_admin": self.is_admin,
             "profile_picture": self.profile_picture,
+            "experience_level": self.experience_level,
             "two_fa_enabled": self.two_fa_enabled,
+            "two_factor_enabled": self.two_factor_enabled,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None
         }

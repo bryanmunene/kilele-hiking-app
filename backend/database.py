@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, event, inspect, pool
+from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 from contextlib import contextmanager
 import os
@@ -12,6 +12,15 @@ try:
     DATABASE_URL = settings.DATABASE_URL
 except ImportError:
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./kilele.db")
+
+def normalize_database_url(url: str) -> str:
+    """Normalize platform-provided database URLs for SQLAlchemy."""
+    if url.startswith("postgres://"):
+        return "postgresql://" + url[len("postgres://"):]
+    return url
+
+
+DATABASE_URL = normalize_database_url(DATABASE_URL)
 
 # Database engine configuration
 engine_kwargs = {}
@@ -62,18 +71,74 @@ def get_db_context():
     finally:
         db.close()
 
-# Lightweight local migrations for existing SQLite databases.
-def _add_missing_sqlite_columns():
-    if engine.dialect.name != "sqlite":
-        return
+def _column_sql(column_type: str) -> str:
+    dialect = engine.dialect.name
+    type_map = {
+        "boolean": "BOOLEAN",
+        "datetime": "DATETIME" if dialect == "sqlite" else "TIMESTAMP",
+        "float": "FLOAT",
+        "integer": "INTEGER",
+        "json": "JSON" if dialect == "sqlite" else "JSONB",
+        "string": "VARCHAR",
+        "text": "TEXT",
+    }
+    return type_map[column_type]
 
+
+def _default_sql(default: str | None) -> str:
+    if default is None:
+        return ""
+    return f" DEFAULT {default}"
+
+
+# Lightweight compatibility migrations for databases created by older releases
+# or by the Streamlit service before the API service starts.
+def _add_missing_columns():
     migrations = {
+        "users": {
+            "bio": ("text", None),
+            "experience_level": ("string", "'Beginner'"),
+            "is_admin": ("boolean", "false"),
+            "two_factor_secret": ("string", None),
+            "two_factor_enabled": ("boolean", "false"),
+            "two_fa_secret": ("string", None),
+            "two_fa_enabled": ("boolean", "false"),
+            "last_login": ("datetime", None),
+        },
+        "achievements": {
+            "requirement_type": ("string", None),
+            "requirement_value": ("float", "0"),
+        },
+        "conversation_participants": {
+            "joined_at": ("datetime", None),
+            "last_read_at": ("datetime", None),
+            "created_at": ("datetime", None),
+        },
         "hike_sessions": {
-            "ended_at": "DATETIME",
-            "status": "VARCHAR(30) DEFAULT 'in_progress'",
-            "duration_hours": "FLOAT DEFAULT 0",
-            "elevation_gain_m": "FLOAT DEFAULT 0",
-            "route_data": "TEXT",
+            "completed_at": ("datetime", None),
+            "ended_at": ("datetime", None),
+            "is_active": ("boolean", "true"),
+            "status": ("string", "'in_progress'"),
+            "current_latitude": ("float", None),
+            "current_longitude": ("float", None),
+            "distance_covered_km": ("float", "0"),
+            "duration_minutes": ("integer", "0"),
+            "duration_hours": ("float", "0"),
+            "elevation_gain_m": ("float", "0"),
+            "route_data": ("text", None),
+            "created_at": ("datetime", None),
+            "rating": ("integer", None),
+        },
+        "messages": {
+            "updated_at": ("datetime", None),
+        },
+        "planned_hikes": {
+            "price": ("float", "0"),
+            "max_participants": ("integer", None),
+        },
+        "reviews": {
+            "photos": ("json", None),
+            "trail_condition": ("string", None),
         },
     }
 
@@ -85,11 +150,10 @@ def _add_missing_sqlite_columns():
             if table_name not in existing_tables:
                 continue
 
-            existing_columns = {
-                row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table_name})")
-            }
-            for column_name, column_sql in columns.items():
+            existing_columns = {column["name"] for column in inspector.get_columns(table_name)}
+            for column_name, (column_type, default) in columns.items():
                 if column_name not in existing_columns:
+                    column_sql = f"{_column_sql(column_type)}{_default_sql(default)}"
                     conn.exec_driver_sql(
                         f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
                     )
@@ -98,6 +162,6 @@ def _add_missing_sqlite_columns():
 # Initialize database (create tables)
 def init_database():
     """Create all database tables"""
-    from models import user, hike, review, achievement, activity, bookmark, follow, hike_session, message
+    from models import user, hike, review, achievement, activity, bookmark, follow, hike_session, message, session_token
     Base.metadata.create_all(bind=engine)
-    _add_missing_sqlite_columns()
+    _add_missing_columns()

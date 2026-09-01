@@ -30,6 +30,7 @@ class HikeSession(Base):
     # Notes and rating
     notes = Column(String(500), nullable=True)
     rating = Column(Integer, nullable=True)  # 1-5 stars
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationship to Strava activity
     strava_activity = relationship("StravaActivity", back_populates="hike_session", uselist=False)
@@ -52,7 +53,8 @@ class HikeSession(Base):
             "elevation_gain_m": self.elevation_gain_m,
             "route_data": self.route_data,
             "notes": self.notes,
-            "rating": self.rating
+            "rating": self.rating,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 

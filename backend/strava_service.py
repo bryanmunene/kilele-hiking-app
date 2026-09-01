@@ -28,9 +28,9 @@ class StravaService:
         self.is_configured = self.is_available and bool(self.client_id and self.client_secret)
         
         if not self.is_available:
-            print("⚠️ WARNING: stravalib is not installed - Strava integration disabled")
+            print("WARNING: stravalib is not installed - Strava integration disabled")
         if not self.is_configured:
-            print("⚠️ WARNING: STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET not set - Strava integration disabled")
+            print("WARNING: STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET not set - Strava integration disabled")
 
     def _client(self, **kwargs):
         if Client is None:

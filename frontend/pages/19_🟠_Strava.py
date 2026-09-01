@@ -4,6 +4,7 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from auth import is_authenticated, get_current_user
+from config import settings
 from nature_theme import apply_nature_theme
 import pandas as pd
 from datetime import datetime
@@ -22,8 +23,21 @@ st.title("🟠 Connect to Strava")
 st.markdown("*Automatically sync your hiking activities from Strava*")
 st.markdown("---")
 
-# API base URL (update this for production)
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+# API base URL can come from Streamlit secrets or environment variables.
+API_BASE_URL = settings.API_BASE_URL.rstrip("/")
+
+
+def get_auth_headers():
+    """Use the current Streamlit session token for backend API calls."""
+    session_token = st.session_state.get("session_token")
+    if session_token:
+        return {"X-Session-Token": session_token}
+
+    access_token = st.session_state.get("access_token")
+    if access_token:
+        return {"Authorization": f"Bearer {access_token}"}
+
+    return {}
 
 # Check connection status
 @st.cache_data(ttl=60)
@@ -31,7 +45,8 @@ def get_strava_stats(user_id):
     try:
         response = requests.get(
             f"{API_BASE_URL}/api/strava/stats",
-            headers={"user-id": str(user_id)}
+            headers=get_auth_headers(),
+            timeout=10,
         )
         if response.status_code == 200:
             return response.json()
@@ -80,7 +95,8 @@ if is_connected:
                 try:
                     response = requests.post(
                         f"{API_BASE_URL}/api/strava/sync?days={days}",
-                        headers={"user-id": str(user['id'])}
+                        headers=get_auth_headers(),
+                        timeout=30,
                     )
                     
                     if response.status_code == 200:
@@ -103,7 +119,8 @@ if is_connected:
             try:
                 response = requests.post(
                     f"{API_BASE_URL}/api/strava/toggle-autosync?enabled={sync_enabled}",
-                    headers={"user-id": str(user['id'])}
+                    headers=get_auth_headers(),
+                    timeout=10,
                 )
                 
                 if response.status_code == 200:
@@ -119,7 +136,8 @@ if is_connected:
             try:
                 response = requests.delete(
                     f"{API_BASE_URL}/api/strava/disconnect",
-                    headers={"user-id": str(user['id'])}
+                    headers=get_auth_headers(),
+                    timeout=10,
                 )
                 
                 if response.status_code == 200:
@@ -139,7 +157,8 @@ if is_connected:
     try:
         response = requests.get(
             f"{API_BASE_URL}/api/strava/activities?limit=20",
-            headers={"user-id": str(user['id'])}
+            headers=get_auth_headers(),
+            timeout=10,
         )
         
         if response.status_code == 200:
@@ -195,7 +214,7 @@ else:
         try:
             response = requests.get(
                 f"{API_BASE_URL}/api/strava/connect",
-                headers={"user-id": str(user['id'])},
+                headers=get_auth_headers(),
                 timeout=10
             )
             

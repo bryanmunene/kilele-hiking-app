@@ -44,6 +44,32 @@ Copy `.env.example` to `.env` for local backend settings. For Streamlit secrets,
 
 Strava, Sentry, Cloudinary, email, and wearable imports are optional integrations. The app now starts locally even when optional integration packages or credentials are absent; related features show unavailable/configuration messaging until those dependencies are installed and configured.
 
+## Deployment Readiness
+
+The deployable shape is two Python services sharing one persistent PostgreSQL database:
+
+```text
+backend   FastAPI service, port 8000 or platform PORT
+frontend  Streamlit service, port 8501 or platform PORT
+database  PostgreSQL shared by both services
+```
+
+For a local production-like run with Docker:
+
+```bash
+cp .env.example .env
+# Set SECRET_KEY in .env to a unique 32+ character value
+docker compose up --build
+```
+
+For hosted deployment, configure both services with the same `DATABASE_URL`. Set `ENVIRONMENT=production`, `DEBUG=False`, a strong `SECRET_KEY`, and explicit `CORS_ORIGINS` that include the deployed Streamlit URL. The backend will fail fast if these production guardrails are missing.
+
+Run the readiness checker before deploying:
+
+```bash
+python deployment_check.py
+```
+
 ## Tests
 
 From the repository root:

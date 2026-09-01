@@ -20,6 +20,6 @@ try:
             ],
             send_default_pii=False,  # Don't send personally identifiable information
         )
-        print(f"✅ Sentry initialized ({settings.SENTRY_ENVIRONMENT})")
+        print(f"Sentry initialized ({settings.SENTRY_ENVIRONMENT})")
 except Exception as e:
-    print(f"⚠️ Sentry not configured: {e}")
+    print(f"Sentry not configured: {e}")

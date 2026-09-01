@@ -1,27 +1,27 @@
-streamlit
-requests
-folium
-streamlit-folium
-plotly
-pandas
-openpyxl
-sqlalchemy>=2.0.0
-bcrypt>=4.0.0
-pyotp
-qrcode
-pillow
+streamlit>=1.53.1,<2.0.0
+requests>=2.32.5,<3.0.0
+folium>=0.20.0,<1.0.0
+streamlit-folium>=0.26.1,<1.0.0
+plotly>=6.5.2,<7.0.0
+pandas>=2.3.3,<3.0.0
+openpyxl>=3.1.5,<4.0.0
+sqlalchemy>=2.0.46,<3.0.0
+bcrypt>=4.0.0,<6.0.0
+pyotp>=2.9.0,<3.0.0
+qrcode[pil]>=8.2,<9.0.0
+pillow>=12.1.0,<13.0.0
 gpxpy==1.6.2
 fitparse==1.2.0
-stravalib==1.6.0
+psycopg2-binary>=2.9.10,<3.0.0
 
 # Database drivers (PostgreSQL - optional, only needed if using PostgreSQL)
-# psycopg2-binary==2.9.9  # Commented out - enable when PostgreSQL credentials are added
+# psycopg2-binary is installed by default because production deployments should use PostgreSQL.
 
 # Image storage (Cloudinary - optional, only needed for cloud image hosting)
 # cloudinary==1.41.0  # Commented out - enable when Cloudinary credentials are added
 
 # Environment & config
-python-dotenv==1.0.1
+python-dotenv>=1.2.1,<2.0.0
 
 # Error tracking (Sentry - optional, only needed for error monitoring)
 # sentry-sdk==1.40.0  # Commented out - enable when Sentry DSN is configured

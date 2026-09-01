@@ -13,6 +13,7 @@ class Review(Base):
     title = Column(String(200))
     comment = Column(Text)
     difficulty_rating = Column(String(20))  # User's perceived difficulty
+    trail_condition = Column(String(100))
     conditions = Column(Text)  # Trail conditions when visited
     visited_date = Column(DateTime(timezone=True))
     helpful_count = Column(Integer, default=0)

@@ -9,6 +9,7 @@ from models.activity import Activity
 from models.message import Message, Conversation, ConversationParticipant
 from models.equipment import Equipment, PlannedHike
 from models.strava import StravaActivity, StravaToken, StravaWebhookSubscription
+from models.session_token import SessionToken
 
 __all__ = [
     "Hike",

@@ -7,6 +7,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from sqlalchemy import text
 
 # Load environment variables first
 load_dotenv()
@@ -22,6 +23,8 @@ from routers import hikes, auth, user_activity, social, messaging, wearable, str
 from config import settings
 from rate_limiter import RateLimitExceeded, limiter, rate_limit_handler
 
+settings.validate_for_runtime()
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO if settings.DEBUG else logging.WARNING,
@@ -32,27 +35,27 @@ logger = logging.getLogger(__name__)
 # Create database tables
 try:
     init_database()
-    logger.info("✅ Database initialized")
+    logger.info("Database initialized")
 except Exception as e:
-    logger.error(f"❌ Database initialization failed: {e}")
+    logger.error("Database initialization failed: %s", e)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start and stop optional background services with the API."""
-    logger.info(f"🚀 Kilele API starting...")
-    logger.info(f"📦 Environment: {settings.ENVIRONMENT}")
-    logger.info(f"🗄️  Database: {'PostgreSQL' if settings.use_postgresql else 'SQLite'}")
-    logger.info(f"☁️  Cloudinary: {'✅ Enabled' if settings.has_cloudinary else '❌ Disabled'}")
-    logger.info(f"📧 Email: {'✅ Enabled' if settings.has_email else '❌ Disabled'}")
-    logger.info(f"🔍 Sentry: {'✅ Enabled' if settings.has_sentry else '❌ Disabled'}")
+    logger.info("Kilele API starting")
+    logger.info("Environment: %s", settings.ENVIRONMENT)
+    logger.info("Database: %s", "PostgreSQL" if settings.use_postgresql else "SQLite")
+    logger.info("Cloudinary: %s", "enabled" if settings.has_cloudinary else "disabled")
+    logger.info("Email: %s", "enabled" if settings.has_email else "disabled")
+    logger.info("Sentry: %s", "enabled" if settings.has_sentry else "disabled")
 
     try:
         from strava_scheduler import start_scheduler
         start_scheduler()
-        logger.info("🟠 Strava auto-sync scheduler started")
+        logger.info("Strava auto-sync scheduler started")
     except Exception as e:
-        logger.warning(f"⚠️ Strava scheduler not started: {e}")
+        logger.warning("Strava scheduler not started: %s", e)
 
     try:
         yield
@@ -60,7 +63,7 @@ async def lifespan(app: FastAPI):
         try:
             from strava_scheduler import stop_scheduler
             stop_scheduler()
-            logger.info("🟠 Strava scheduler stopped")
+            logger.info("Strava scheduler stopped")
         except Exception:
             pass
 
@@ -114,7 +117,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 else:
-    logger.warning("⚠️ Static files directory not found: %s", STATIC_DIR)
+    logger.warning("Static files directory not found: %s", STATIC_DIR)
 
 @app.get("/")
 def read_root():
@@ -129,6 +132,20 @@ def read_root():
 @app.get("/health")
 def health_check():
     """Health check endpoint for monitoring"""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.error("Database health check failed: %s", exc, exc_info=True)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "environment": settings.ENVIRONMENT,
+                "database": "unavailable",
+            },
+        )
+
     return {
         "status": "healthy",
         "environment": settings.ENVIRONMENT,
@@ -159,7 +176,7 @@ if __name__ == "__main__":
     host = settings.API_BASE_URL.split("://")[1].split(":")[0] if "://" in settings.API_BASE_URL else "0.0.0.0"
     port = int(os.getenv("PORT", 8000))
     
-    logger.info(f"🚀 Starting server on {host}:{port}")
+    logger.info("Starting server on %s:%s", host, port)
     
     uvicorn.run(
         "main:app",

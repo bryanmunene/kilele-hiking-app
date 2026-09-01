@@ -44,9 +44,12 @@ class User(Base):
     experience_level = Column(String, default="Beginner")
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
+    two_fa_secret = Column(String)
+    two_fa_enabled = Column(Boolean, default=False)
     two_factor_secret = Column(String)
     two_factor_enabled = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime)
     
     # Relationships
     reviews = relationship("Review", back_populates="user")
@@ -89,13 +92,19 @@ class HikeSession(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     hike_id = Column(Integer, ForeignKey("hikes.id"))
     started_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime)
     ended_at = Column(DateTime)
+    is_active = Column(Boolean, default=True)
+    current_latitude = Column(Float)
+    current_longitude = Column(Float)
+    duration_minutes = Column(Integer, default=0)
     duration_hours = Column(Float)
     distance_covered_km = Column(Float)
     elevation_gain_m = Column(Float)
     status = Column(String, default="in_progress")
     route_data = Column(Text)
     notes = Column(Text)
+    rating = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -185,6 +194,8 @@ class ConversationParticipant(Base):
     conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     joined_at = Column(DateTime, default=datetime.utcnow)
+    last_read_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
     conversation = relationship("Conversation", back_populates="participants")
@@ -198,6 +209,7 @@ class Message(Base):
     content = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     conversation = relationship("Conversation", back_populates="messages")

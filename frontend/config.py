@@ -1,6 +1,6 @@
 """Production configuration management for Kilele frontend"""
 import os
-from typing import Optional
+from typing import Any, Optional
 
 class Settings:
     """Application settings from environment variables or Streamlit secrets"""
@@ -13,7 +13,7 @@ class Settings:
         except:
             self._secrets = None
     
-    def _get(self, key: str, default: any = None) -> any:
+    def _get(self, key: str, default: Any = None) -> Any:
         """Get value from secrets or environment"""
         if self._secrets is not None:
             try:
@@ -55,7 +55,7 @@ class Settings:
     
     @property
     def DEBUG(self) -> bool:
-        return self._get("DEBUG", "True").lower() == "true"
+        return str(self._get("DEBUG", "True")).lower() in {"1", "true", "yes", "on"}
     
     @property
     def MAX_UPLOAD_SIZE_MB(self) -> int:
@@ -64,17 +64,17 @@ class Settings:
     @property
     def is_production(self) -> bool:
         """Check if running in production"""
-        return self.ENVIRONMENT == "production"
+        return self.ENVIRONMENT.lower() == "production"
     
     @property
     def is_development(self) -> bool:
         """Check if running in development"""
-        return self.ENVIRONMENT == "development"
+        return self.ENVIRONMENT.lower() == "development"
     
     @property
     def use_postgresql(self) -> bool:
         """Check if using PostgreSQL"""
-        return self.DATABASE_URL.startswith("postgresql")
+        return self.DATABASE_URL.startswith(("postgresql", "postgres://"))
     
     @property
     def has_cloudinary(self) -> bool:

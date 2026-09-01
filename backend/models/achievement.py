@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Float
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -11,8 +11,10 @@ class Achievement(Base):
     description = Column(Text)
     icon = Column(String(100))  # Icon name or emoji
     category = Column(String(50))  # distance, count, elevation, special
-    requirement = Column(Integer)  # e.g., 10 hikes, 100km, etc.
+    requirement = Column(String(100))  # e.g., complete_5_hikes, distance_10km
     points = Column(Integer, default=0)
+    requirement_type = Column(String(100))
+    requirement_value = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
