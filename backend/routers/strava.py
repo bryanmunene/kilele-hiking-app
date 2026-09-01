@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from database import get_db
 from auth import get_current_user
 from strava_service import strava_service
+from models.user import User
 from models.strava import StravaActivity, StravaToken
 import os
 
@@ -50,7 +51,7 @@ class StravaStatsResponse(BaseModel):
 
 
 @router.get("/connect", response_model=StravaConnectResponse)
-async def connect_strava(current_user: dict = Depends(get_current_user)):
+async def connect_strava(current_user: User = Depends(get_current_user)):
     """
     Get Strava OAuth authorization URL
     """
@@ -61,7 +62,7 @@ async def connect_strava(current_user: dict = Depends(get_current_user)):
                 detail="Strava integration is not configured. Please contact administrator to set up Strava API credentials."
             )
         
-        state = f"user_{current_user['id']}"
+        state = f"user_{current_user.id}"
         auth_url = strava_service.get_authorization_url(state=state)
         
         return {"authorization_url": auth_url}
@@ -75,7 +76,7 @@ async def connect_strava(current_user: dict = Depends(get_current_user)):
 async def strava_callback(
     request: StravaCallbackRequest,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Handle OAuth callback from Strava
@@ -84,7 +85,7 @@ async def strava_callback(
         token = strava_service.exchange_code_for_token(
             code=request.code,
             db=db,
-            user_id=current_user['id']
+            user_id=current_user.id
         )
         
         return {
@@ -102,14 +103,14 @@ async def sync_activities(
     background_tasks: BackgroundTasks,
     days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Sync activities from Strava
     """
     try:
         # Check if user is connected
-        token = db.query(StravaToken).filter(StravaToken.user_id == current_user['id']).first()
+        token = db.query(StravaToken).filter(StravaToken.user_id == current_user.id).first()
         
         if not token:
             raise HTTPException(status_code=404, detail="Strava not connected")
@@ -118,7 +119,7 @@ async def sync_activities(
         after_date = datetime.utcnow() - timedelta(days=days)
         
         activities = strava_service.sync_activities(
-            user_id=current_user['id'],
+            user_id=current_user.id,
             db=db,
             after=after_date
         )
@@ -139,13 +140,13 @@ async def sync_activities(
 async def get_activities(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get user's synced Strava activities
     """
     activities = db.query(StravaActivity).filter(
-        StravaActivity.user_id == current_user['id']
+        StravaActivity.user_id == current_user.id
     ).order_by(StravaActivity.start_date.desc()).limit(limit).all()
     
     result = []
@@ -168,12 +169,12 @@ async def get_activities(
 @router.get("/stats", response_model=StravaStatsResponse)
 async def get_stats(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get user's Strava statistics
     """
-    token = db.query(StravaToken).filter(StravaToken.user_id == current_user['id']).first()
+    token = db.query(StravaToken).filter(StravaToken.user_id == current_user.id).first()
     
     if not token:
         return {
@@ -186,7 +187,7 @@ async def get_stats(
             "is_connected": False
         }
     
-    stats = strava_service.get_user_stats(current_user['id'], db)
+    stats = strava_service.get_user_stats(current_user.id, db)
     stats['is_connected'] = True
     stats['last_synced'] = token.last_synced.isoformat() if token.last_synced else None
     
@@ -196,12 +197,12 @@ async def get_stats(
 @router.delete("/disconnect")
 async def disconnect_strava(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Disconnect Strava account
     """
-    success = strava_service.disconnect_strava(current_user['id'], db)
+    success = strava_service.disconnect_strava(current_user.id, db)
     
     if not success:
         raise HTTPException(status_code=404, detail="Strava not connected")
@@ -308,12 +309,12 @@ async def webhook_event(
 async def toggle_autosync(
     enabled: bool,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Enable/disable automatic activity syncing
     """
-    token = db.query(StravaToken).filter(StravaToken.user_id == current_user['id']).first()
+    token = db.query(StravaToken).filter(StravaToken.user_id == current_user.id).first()
     
     if not token:
         raise HTTPException(status_code=404, detail="Strava not connected")

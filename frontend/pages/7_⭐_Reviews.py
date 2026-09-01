@@ -66,7 +66,10 @@ def submit_review(hike_id, rating, title, comment, difficulty_rating, conditions
             user_id=user['id'],
             hike_id=hike_id,
             rating=rating,
-            comment=f"**{title}**\\n\\n{comment}\\n\\nDifficulty: {difficulty_rating}/5\\nConditions: {conditions}",
+            title=title,
+            comment=comment,
+            difficulty_rating=difficulty_rating,
+            conditions=conditions,
             visited_date=visited_date
         )
         
@@ -217,7 +220,7 @@ with tab1:
                     photo_cols = st.columns(min(len(review['photos']), 3))
                     for idx, photo in enumerate(review['photos'][:3]):
                         with photo_cols[idx]:
-                            st.image(photo['photo_url'], caption=photo.get('caption', ''), use_column_width=True)
+                            st.image(photo['photo_url'], caption=photo.get('caption', ''), width="stretch")
                 
                 st.markdown("---")
         else:
@@ -294,7 +297,7 @@ with tab2:
                 max_chars=2000
             )
             
-            submitted = st.form_submit_button("Submit Review", use_container_width=True)
+            submitted = st.form_submit_button("Submit Review", width="stretch")
             
             if submitted:
                 if not title or not comment:

@@ -8,15 +8,16 @@ import os
 import csv
 from datetime import datetime, timedelta
 from io import StringIO
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from auth import is_authenticated, get_current_user, restore_session_from_storage
+from services import (
     get_all_hikes, create_planned_hike, get_user_planned_hikes, 
     update_planned_hike_status, delete_planned_hike, get_hike_registrations
 )
 from database import get_db
 from models import PlannedHike, Hike
 from nature_theme import apply_nature_theme
-
-# Restore session
-restore_session_from_storage()
 
 # Page config
 st.set_page_config(
@@ -25,6 +26,9 @@ st.set_page_config(
     layout="wide"
 )
 apply_nature_theme()
+
+# Restore session after page configuration.
+restore_session_from_storage()
 
 # Mobile responsive CSS
 st.markdown("""
@@ -95,14 +99,14 @@ with tab1:
     with col_per_page:
         st.session_state.items_per_page = st.selectbox("Per page", [5, 10, 20, 50], index=1, label_visibility="collapsed")
     with col_export:
-        export_btn = st.button("📥 Export CSV", use_container_width=True)
+        export_btn = st.button("📥 Export CSV", width="stretch")
     
     # Bulk operations toolbar
     if len(st.session_state.selected_hikes) > 0:
         st.info(f"✅ {len(st.session_state.selected_hikes)} hike(s) selected")
         bulk_col1, bulk_col2, bulk_col3, bulk_col4 = st.columns(4)
         with bulk_col1:
-            if st.button("✅ Mark as Completed", use_container_width=True):
+            if st.button("✅ Mark as Completed", width="stretch"):
                 with get_db() as db:
                     for hike_id in st.session_state.selected_hikes:
                         ph = db.query(PlannedHike).filter(PlannedHike.id == hike_id).first()
@@ -113,7 +117,7 @@ with tab1:
                 st.success("Hikes marked as completed!")
                 st.rerun()
         with bulk_col2:
-            if st.button("❌ Cancel Selected", use_container_width=True):
+            if st.button("❌ Cancel Selected", width="stretch"):
                 with get_db() as db:
                     for hike_id in st.session_state.selected_hikes:
                         ph = db.query(PlannedHike).filter(PlannedHike.id == hike_id).first()
@@ -124,7 +128,7 @@ with tab1:
                 st.success("Hikes cancelled!")
                 st.rerun()
         with bulk_col3:
-            if st.button("🗑️ Delete Selected", use_container_width=True, type="secondary"):
+            if st.button("🗑️ Delete Selected", width="stretch", type="secondary"):
                 with get_db() as db:
                     # Check for registrations
                     from models import HikeRegistration
@@ -147,7 +151,7 @@ with tab1:
                         st.success("Hikes deleted!")
                         st.rerun()
         with bulk_col4:
-            if st.button("🔄 Clear Selection", use_container_width=True):
+            if st.button("🔄 Clear Selection", width="stretch"):
                 st.session_state.selected_hikes.clear()
                 st.rerun()
     
@@ -305,19 +309,19 @@ with tab1:
                             st.markdown("##### Quick Actions")
                             quick_col1, quick_col2, quick_col3 = st.columns(3)
                             with quick_col1:
-                                if st.button("✅ Complete", key=f"complete_{ph.id}", use_container_width=True, disabled=(ph.status == "completed")):
+                                if st.button("✅ Complete", key=f"complete_{ph.id}", width="stretch", disabled=(ph.status == "completed")):
                                     ph.status = "completed"
                                     db.commit()
                                     st.success("Status updated!")
                                     st.rerun()
                             with quick_col2:
-                                if st.button("❌ Cancel", key=f"cancel_{ph.id}", use_container_width=True, disabled=(ph.status == "cancelled")):
+                                if st.button("❌ Cancel", key=f"cancel_{ph.id}", width="stretch", disabled=(ph.status == "cancelled")):
                                     ph.status = "cancelled"
                                     db.commit()
                                     st.success("Status updated!")
                                     st.rerun()
                             with quick_col3:
-                                if st.button("🔄 Reopen", key=f"reopen_{ph.id}", use_container_width=True, disabled=(ph.status == "planned")):
+                                if st.button("🔄 Reopen", key=f"reopen_{ph.id}", width="stretch", disabled=(ph.status == "planned")):
                                     ph.status = "planned"
                                     db.commit()
                                     st.success("Status updated!")
@@ -441,7 +445,7 @@ with tab1:
                                     "Registered": reg.created_at.strftime("%b %d, %Y")
                                 })
                             
-                            st.dataframe(reg_data, use_container_width=True, hide_index=True)
+                            st.dataframe(reg_data, width="stretch", hide_index=True)
                             
                             # Add download button for participants list
                             csv_buffer = StringIO()
@@ -464,7 +468,7 @@ with tab1:
                     col_prev, col_page, col_next = st.columns([1, 2, 1])
                     
                     with col_prev:
-                        if st.button("◀️ Previous", disabled=(st.session_state.page_number == 1), use_container_width=True):
+                        if st.button("◀️ Previous", disabled=(st.session_state.page_number == 1), width="stretch"):
                             st.session_state.page_number -= 1
                             st.rerun()
                     
@@ -482,7 +486,7 @@ with tab1:
                             st.rerun()
                     
                     with col_next:
-                        if st.button("Next ▶️", disabled=(st.session_state.page_number == total_pages), use_container_width=True):
+                        if st.button("Next ▶️", disabled=(st.session_state.page_number == total_pages), width="stretch"):
                             st.session_state.page_number += 1
                             st.rerun()
     
@@ -614,66 +618,63 @@ with tab2:
                 try:
                     with st.spinner("Creating hike..."):
                         with get_db() as db:
-                        # Handle image upload
-                        image_url = None
-                        if uploaded_image is not None:
-                            # Save image to static folder
-                            import hashlib
-                            from pathlib import Path
+                            # Handle image upload
+                            image_url = None
+                            if uploaded_image is not None:
+                                import hashlib
+                                from pathlib import Path
+                                
+                                image_hash = hashlib.md5(uploaded_image.getvalue()).hexdigest()[:10]
+                                file_extension = uploaded_image.name.split('.')[-1]
+                                filename = f"hike_{image_hash}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
+                                
+                                static_dir = Path(__file__).parent.parent / "static" / "hikes"
+                                static_dir.mkdir(parents=True, exist_ok=True)
+                                image_path = static_dir / filename
+                                
+                                with open(image_path, "wb") as f:
+                                    f.write(uploaded_image.getvalue())
+                                
+                                image_url = f"/static/hikes/{filename}"
+                                st.success(f"✅ Image uploaded: {filename}")
                             
-                            # Create unique filename
-                            image_hash = hashlib.md5(uploaded_image.getvalue()).hexdigest()[:10]
-                            file_extension = uploaded_image.name.split('.')[-1]
-                            filename = f"hike_{image_hash}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
+                            # If custom hike, create trail entry first
+                            if not use_existing:
+                                new_trail = Hike(
+                                    name=custom_name,
+                                    location=custom_location,
+                                    difficulty=custom_difficulty,
+                                    distance_km=0,  # Can be updated later
+                                    description=notes or f"Organized hike to {custom_name}",
+                                    trail_type="Organized Group Hike",
+                                    image_url=image_url
+                                )
+                                db.add(new_trail)
+                                db.flush()
+                                db.refresh(new_trail)
+                                hike_id = new_trail.id
+                                st.info(f"✨ Created new trail: {custom_name}")
                             
-                            # Save to static/hikes folder
-                            static_dir = Path(__file__).parent.parent / "static" / "hikes"
-                            static_dir.mkdir(parents=True, exist_ok=True)
-                            image_path = static_dir / filename
-                            
-                            with open(image_path, "wb") as f:
-                                f.write(uploaded_image.getvalue())
-                            
-                            image_url = f"/static/hikes/{filename}"
-                            st.success(f"✅ Image uploaded: {filename}")
-                        
-                        # If custom hike, create trail entry first
-                        if not use_existing:
-                            new_trail = Hike(
-                                name=custom_name,
-                                location=custom_location,
-                                difficulty=custom_difficulty,
-                                distance_km=0,  # Can be updated later
-                                description=notes or f"Organized hike to {custom_name}",
-                                trail_type="Organized Group Hike",
-                                image_url=image_url  # Add image to trail
+                            new_hike = PlannedHike(
+                                user_id=user['id'],
+                                hike_id=hike_id,
+                                planned_date=hike_datetime,
+                                status="planned",
+                                notes=notes,
+                                transport_mode=transport,
+                                meeting_point=meeting_point,
+                                price=price,
+                                max_participants=max_participants,
+                                participants=[]
                             )
-                            db.add(new_trail)
-                            db.flush()
-                            db.refresh(new_trail)
-                            hike_id = new_trail.id
-                            st.info(f"✨ Created new trail: {custom_name}")
-                        
-                        new_hike = PlannedHike(
-                            user_id=user['id'],
-                            hike_id=hike_id,
-                            planned_date=hike_datetime,
-                            status="planned",
-                            notes=notes,
-                            transport_mode=transport,
-                            meeting_point=meeting_point,
-                            price=price,
-                            max_participants=max_participants,
-                            participants=[]
-                        )
-                        db.add(new_hike)
-                        db.commit()
-                        db.refresh(new_hike)
-                        
-                        st.success(f"✅ Upcoming hike created successfully!")
-                        st.balloons()
-                        st.info(f"📋 Hike ID: {new_hike.id} | 📅 Scheduled for {hike_datetime.strftime('%B %d, %Y at %I:%M %p')}")
-                        st.rerun()
+                            db.add(new_hike)
+                            db.commit()
+                            db.refresh(new_hike)
+                            
+                            st.success(f"✅ Upcoming hike created successfully!")
+                            st.balloons()
+                            st.info(f"📋 Hike ID: {new_hike.id} | 📅 Scheduled for {hike_datetime.strftime('%B %d, %Y at %I:%M %p')}")
+                            st.rerun()
                 
                 except Exception as e:
                     st.error(f"❌ Error creating hike: {e}")
@@ -734,7 +735,7 @@ with tab3:
                         })
                 
                 if revenue_data:
-                    st.dataframe(revenue_data, use_container_width=True, hide_index=True)
+                    st.dataframe(revenue_data, width="stretch", hide_index=True)
                 else:
                     st.info("No paid hikes yet")
     

@@ -2,7 +2,7 @@
 Database models for Streamlit app
 Copied from backend with Streamlit-specific optimizations
 """
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -59,6 +59,9 @@ class User(Base):
 
 class Review(Base):
     __tablename__ = "reviews"
+    __table_args__ = (
+        UniqueConstraint("user_id", "hike_id", name="uq_review_user_hike"),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -67,8 +70,11 @@ class Review(Base):
     title = Column(String)
     comment = Column(Text)
     photos = Column(JSON)
-    difficulty_rating = Column(String)
+    difficulty_rating = Column(Integer)
     trail_condition = Column(String)
+    conditions = Column(Text)
+    visited_date = Column(DateTime)
+    helpful_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -98,10 +104,14 @@ class HikeSession(Base):
 
 class Bookmark(Base):
     __tablename__ = "bookmarks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "hike_id", name="uq_bookmark_user_hike"),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     hike_id = Column(Integer, ForeignKey("hikes.id"), nullable=False)
+    notes = Column(String(500))
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -115,9 +125,11 @@ class Achievement(Base):
     name = Column(String, nullable=False)
     description = Column(Text)
     icon = Column(String)
+    category = Column(String, default="milestones")
+    requirement = Column(String)
     points = Column(Integer, default=0)
-    requirement_type = Column(String, nullable=False)
-    requirement_value = Column(Float, nullable=False)
+    requirement_type = Column(String)
+    requirement_value = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -125,11 +137,16 @@ class Achievement(Base):
 
 class UserAchievement(Base):
     __tablename__ = "user_achievements"
+    __table_args__ = (
+        UniqueConstraint("user_id", "achievement_id", name="uq_user_achievement"),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     achievement_id = Column(Integer, ForeignKey("achievements.id"), nullable=False)
     earned_at = Column(DateTime, default=datetime.utcnow)
+    progress = Column(Integer, default=0)
+    completed = Column(Boolean, default=False)
     
     # Relationships
     user = relationship("User", back_populates="achievements")
@@ -137,6 +154,9 @@ class UserAchievement(Base):
 
 class Follow(Base):
     __tablename__ = "follows"
+    __table_args__ = (
+        UniqueConstraint("follower_id", "following_id", name="uq_follow_pair"),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -220,6 +240,7 @@ class Goal(Base):
     current_value = Column(Float, default=0.0)
     deadline = Column(DateTime)
     status = Column(String, default="active")  # active, completed, failed
+    completed_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

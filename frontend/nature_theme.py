@@ -1,597 +1,411 @@
-"""Reusable Kilele Explorers theme CSS - based on logo colors"""
+"""Reusable Kilele Explorers Streamlit theme."""
 
 NATURE_CSS = """
     <style>
-    /* Main app background - mountain sky gradient from logo */
+    :root {
+        --kilele-ink: #17211c;
+        --kilele-muted: #617067;
+        --kilele-forest: #1f4f3a;
+        --kilele-leaf: #2f7d55;
+        --kilele-mist: #d9ece4;
+        --kilele-sky: #d8edf2;
+        --kilele-sun: #c96f36;
+        --kilele-paper: #fffdf8;
+        --kilele-stone: #e6e0d3;
+    }
+
     .stApp {
-        background: linear-gradient(180deg, 
-            #e3f2fd 0%,
-            #bbdefb 25%, 
-            #90caf9 50%,
-            #64b5f6 100%
-        );
-        background-attachment: fixed;
+        background:
+            linear-gradient(180deg, rgba(216, 237, 242, 0.88) 0%, rgba(246, 244, 237, 0.96) 32%, #f6f4ed 100%);
+        color: var(--kilele-ink);
     }
-    
-    /* Mobile-first responsive viewport */
-    @viewport {
-        width: device-width;
-        zoom: 1.0;
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 1180px;
     }
-    
-    /* Sidebar with logo navy blue theme */
+
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, 
-            #1e3a5f 0%, 
-            #2c4563 50%,
-            #3a5270 100%
-        ) !important;
+        background: #20352c !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
     }
-    
+
     [data-testid="stSidebar"] * {
-        color: white !important;
+        color: #f7f2e8 !important;
     }
-    
-    /* Hero/Header sections - deep navy from compass */
-    .hero-section, .header-section {
-        background: linear-gradient(135deg, 
-            #1e3a5f 0%, 
-            #2c4563 25%,
-            #4a6fa5 50%,
-            #5b7ea8 100%
-        );
-        padding: 40px;
-        border-radius: 15px;
-        color: white;
-        text-align: center;
-        margin-bottom: 30px;
-        box-shadow: 0 12px 30px rgba(30, 58, 95, 0.3);
-        border: 3px solid rgba(255, 255, 255, 0.2);
+
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+    [data-testid="stSidebar"] label {
+        color: #f7f2e8 !important;
     }
-    
-    /* Mobile responsive hero */
-    @media (max-width: 768px) {
-        .hero-section, .header-section {
-            padding: 20px 15px;
-            border-radius: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-        }
-    }
-    
-    /* Content cards with mountain blue theme */
-    .content-card, .feature-card {
-        background: linear-gradient(135deg, 
-            #ffffff 0%, 
-            #e3f2fd 50%,
-            #bbdefb 100%
-        );
-        padding: 25px;
-        border-radius: 12px;
-        border: 2px solid #90caf9;
-        box-shadow: 0 4px 15px rgba(100, 181, 246, 0.15);
-        transition: all 0.3s ease;
-        margin-bottom: 15px;
-        color: #1e3a5f;
-    }
-    
-    .content-card:hover, .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 30px rgba(100, 181, 246, 0.25);
-        border-color: #64b5f6;
-    }
-    
-    /* Mobile responsive cards */
-    @media (max-width: 768px) {
-        .content-card, .feature-card {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-    }
-    
-    /* Stats boxes - medium blue from logo */
-    .stat-box, .metric-box {
-        background: linear-gradient(135deg, 
-            #2c4563 0%, 
-            #4a6fa5 50%,
-            #5b7ea8 100%
-        );
-        color: white;
-        padding: 20px;
-        border-radius: 12px;
-        text-align: center;
-        box-shadow: 0 6px 20px rgba(44, 69, 99, 0.3);
-        border: 2px solid rgba(255, 255, 255, 0.2);
-    }
-    
-    .stat-number, .metric-number {
-        font-size: 36px;
-        font-weight: bold;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    
-    /* Mobile responsive stats */
-    @media (max-width: 768px) {
-        .stat-box, .metric-box {
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-        .stat-number, .metric-number {
-            font-size: 24px;
-        }
-    }
-    
-    /* Buttons with compass blue theme */
-    .stButton>button {
-        background: linear-gradient(135deg, #4a6fa5 0%, #5b7ea8 100%) !important;
-        color: white !important;
-        border: 2px solid rgba(255, 255, 255, 0.3) !important;
-        box-shadow: 0 4px 12px rgba(74, 111, 165, 0.3) !important;
-        transition: all 0.3s ease !important;
-    }
-    
-    .stButton>button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 20px rgba(74, 111, 165, 0.4) !important;
-    }
-    
-    /* Input fields with blue mountain border */
-    .stTextInput>div>div>input,
-    .stTextArea>div>div>textarea,
-    .stSelectbox>div>div>select,
-    .stNumberInput>div>div>input {
-        border: 2px solid #90caf9 !important;
-        background: rgba(255, 255, 255, 0.98) !important;
-        border-radius: 12px !important;
-        padding: 14px 18px !important;
-        font-size: 16px !important;
-        line-height: 1.6 !important;
-        transition: all 0.3s ease !important;
-        color: #1e3a5f !important;
-        font-weight: 500 !important;
-    }
-    
-    .stTextInput>div>div>input:focus,
-    .stTextArea>div>div>textarea:focus,
-    .stSelectbox>div>div>select:focus,
-    .stNumberInput>div>div>input:focus {
-        border-color: #2c4563 !important;
-        box-shadow: 0 0 0 4px rgba(74, 111, 165, 0.2) !important;
-        background: rgba(255, 255, 255, 1) !important;
-        outline: none !important;
-        transform: translateY(-1px) !important;
-    }
-    
-    /* Mobile-optimized form inputs */
-    @media (max-width: 768px) {
-        /* Make inputs larger and easier to tap */
-        .stTextInput>div>div>input,
-        .stTextArea>div>div>textarea,
-        .stSelectbox>div>div>select,
-        .stNumberInput>div>div>input {
-            font-size: 18px !important;
-            padding: 16px 20px !important;
-            border-radius: 14px !important;
-            border-width: 2.5px !important;
-            min-height: 52px !important;
-            -webkit-appearance: none !important;
-            appearance: none !important;
-        }
-        
-        /* Better spacing between form elements */
-        .stTextInput, .stTextArea, .stNumberInput, .stSelectbox {
-            margin-bottom: 20px !important;
-        }
-        
-        /* Dropdown arrow on mobile */
-        .stSelectbox>div>div>select {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%232c4563'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") !important;
-            background-repeat: no-repeat !important;
-            background-position: right 16px center !important;
-            background-size: 24px !important;
-            padding-right: 52px !important;
-        }
-        
-        /* Number input controls */
-        .stNumberInput>div>div>button {
-            min-width: 48px !important;
-            min-height: 48px !important;
-            font-size: 24px !important;
-            border-radius: 12px !important;
-            background: linear-gradient(135deg, #4a6fa5 0%, #5b7ea8 100%) !important;
-            color: white !important;
-            border: none !important;
-            margin: 0 4px !important;
-        }
-        
-        .stNumberInput>div>div>button:active {
-            transform: scale(0.95) !important;
-        }
-        
-        /* Text area needs more height on mobile */
-        .stTextArea>div>div>textarea {
-            min-height: 120px !important;
-        }
-        
-        /* Focus state more prominent on mobile */
-        .stTextInput>div>div>input:focus,
-        .stTextArea>div>div>textarea:focus,
-        .stSelectbox>div>div>select:focus,
-        .stNumberInput>div>div>input:focus {
-            box-shadow: 0 0 0 5px rgba(74, 111, 165, 0.25) !important;
-            border-width: 3px !important;
-        }
-    }
-    
-    /* Input labels - make them more prominent */
-    .stTextInput>label,
-    .stTextArea>label,
-    .stSelectbox>label,
-    .stNumberInput>label {
-        font-size: 16px !important;
-        font-weight: 700 !important;
-        color: #1e3a5f !important;
-        margin-bottom: 10px !important;
-        display: block !important;
-        letter-spacing: 0.3px !important;
-    }
-    
-    /* Mobile labels */
-    @media (max-width: 768px) {
-        .stTextInput>label,
-        .stTextArea>label,
-        .stSelectbox>label,
-        .stNumberInput>label {
-            font-size: 18px !important;
-            margin-bottom: 12px !important;
-        }
-    }
-    
-    /* Placeholder text - clearer on mobile */
-    .stTextInput>div>div>input::placeholder,
-    .stTextArea>div>div>textarea::placeholder {
-        color: #78909c !important;
-        opacity: 0.85 !important;
-        font-style: italic !important;
-        font-weight: 400 !important;
-    }
-    
-    @media (max-width: 768px) {
-        .stTextInput>div>div>input::placeholder,
-        .stTextArea>div>div>textarea::placeholder {
-            font-size: 16px !important;
-        }
-    }
-    
-    /* Expander with mountain theme */
-    .streamlit-expanderHeader {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
-        border: 2px solid #90caf9 !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Tabs with mountain blue colors */
-    .stTabs [data-baseweb="tab-list"] {
-        background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);
-        border-radius: 10px;
-        padding: 5px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        background: transparent;
-        border-radius: 8px;
-        color: #2c4563 !important;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #4a6fa5 0%, #5b7ea8 100%) !important;
-        color: white !important;
-    }
-    
-    /* Difficulty badges */
-    .difficulty-easy { 
-        color: #64b5f6; 
-        font-weight: bold; 
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-    }
-    .difficulty-moderate { 
-        color: #ffa726; 
-        font-weight: bold; 
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-    }
-    .difficulty-hard { 
-        color: #ef5350; 
-        font-weight: bold; 
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-    }
-    .difficulty-extreme { 
-        color: #ab47bc; 
-        font-weight: bold; 
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-    }
-    
-    /* Success/Error messages */
-    .stSuccess {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
-        border-left: 5px solid #64b5f6 !important;
-    }
-    
-    .stError {
-        background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%) !important;
-        border-left: 5px solid #ef5350 !important;
-    }
-    
-    .stWarning {
-        background: linear-gradient(135deg, #e3f2fd 0%, #90caf9 100%) !important;
-        border-left: 5px solid #42a5f5 !important;
-    }
-    
-    .stInfo {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
-        border-left: 5px solid #42a5f5 !important;
-    }
-    
-    /* Dataframe styling */
-    .dataframe {
-        border: 2px solid #90caf9 !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Card hover effects */
-    .hike-card, .trail-card, .user-card {
-        background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
-        padding: 20px;
-        border-radius: 12px;
-        margin-bottom: 15px;
-        border-left: 5px solid #4a6fa5;
-        box-shadow: 0 4px 12px rgba(74, 111, 165, 0.15);
-        transition: all 0.3s ease;
-    }
-    
-    .hike-card:hover, .trail-card:hover, .user-card:hover {
-        box-shadow: 0 8px 20px rgba(74, 111, 165, 0.25);
-        transform: translateY(-2px);
-    }
-    
-    /* Metric styling */
-    .big-metric {
-        font-size: 42px;
-        font-weight: bold;
-        color: #2c4563;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    /* Headers */
+
     h1, h2, h3 {
-        color: #1e3a5f !important;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        color: var(--kilele-ink) !important;
+        letter-spacing: 0;
     }
-    
-    /* ===== MOBILE RESPONSIVENESS ===== */
-    
-    /* Mobile: screens smaller than 768px */
-    @media only screen and (max-width: 768px) {
-        /* Reduce padding on mobile */
-        .stApp {
-            padding: 10px !important;
+
+    h1 {
+        font-size: 3.1rem !important;
+        line-height: 1.05 !important;
+        margin-bottom: 0.35rem !important;
+    }
+
+    h2 {
+        font-size: 1.55rem !important;
+        margin-top: 1.4rem !important;
+    }
+
+    h3 {
+        font-size: 1.12rem !important;
+    }
+
+    p, li, span, div {
+        letter-spacing: 0;
+    }
+
+    a {
+        color: var(--kilele-forest);
+    }
+
+    .hero-section, .header-section, .section-panel {
+        background: var(--kilele-paper);
+        border: 1px solid var(--kilele-stone);
+        border-radius: 8px;
+        padding: 1.4rem;
+        color: var(--kilele-ink);
+        box-shadow: 0 18px 42px rgba(23, 33, 28, 0.08);
+        margin-bottom: 1.3rem;
+    }
+
+    .hero-title {
+        color: var(--kilele-ink);
+        font-size: 3.6rem;
+        font-weight: 800;
+        line-height: 0.98;
+    }
+
+    .hero-subtitle, .hero-tagline {
+        color: var(--kilele-muted);
+        font-size: 1rem;
+    }
+
+    .content-card,
+    .feature-card,
+    .stat-card,
+    .stats-card,
+    .trail-card,
+    .hike-card,
+    .user-card,
+    .activity-card,
+    .follow-suggestion-card,
+    .achievement-card,
+    .planned-hike-card,
+    .gear-card {
+        background: var(--kilele-paper);
+        border: 1px solid var(--kilele-stone);
+        border-radius: 8px;
+        color: var(--kilele-ink);
+        box-shadow: 0 12px 28px rgba(23, 33, 28, 0.08);
+    }
+
+    .content-card,
+    .feature-card,
+    .activity-card,
+    .follow-suggestion-card,
+    .achievement-card,
+    .planned-hike-card,
+    .gear-card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .content-card:hover,
+    .feature-card:hover,
+    .hike-card:hover,
+    .trail-card:hover,
+    .user-card:hover,
+    .achievement-card:hover,
+    .gear-card:hover {
+        box-shadow: 0 18px 36px rgba(23, 33, 28, 0.12);
+    }
+
+    .stat-box, .metric-box, .stat-card, .stats-card {
+        background: #20352c;
+        color: #f7f2e8;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stat-number, .metric-number, .big-metric {
+        color: #f7f2e8;
+        font-size: 2rem;
+        font-weight: 800;
+    }
+
+    .stat-label, .metric-label {
+        color: #d9ece4;
+        font-size: 0.9rem;
+    }
+
+    .stButton > button,
+    .stDownloadButton > button {
+        background: var(--kilele-forest) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        border-radius: 8px !important;
+        font-weight: 700 !important;
+        min-height: 42px;
+        transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease !important;
+        box-shadow: 0 8px 18px rgba(31, 79, 58, 0.18) !important;
+    }
+
+    .stButton > button:hover,
+    .stDownloadButton > button:hover {
+        background: var(--kilele-leaf) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 12px 24px rgba(31, 79, 58, 0.22) !important;
+    }
+
+    .stButton > button[kind="secondary"] {
+        background: #fffdf8 !important;
+        color: var(--kilele-forest) !important;
+        border: 1px solid var(--kilele-stone) !important;
+        box-shadow: none !important;
+    }
+
+    .stTextInput input,
+    .stTextArea textarea,
+    .stNumberInput input,
+    [data-baseweb="select"] > div {
+        border: 1px solid var(--kilele-stone) !important;
+        background: rgba(255, 253, 248, 0.98) !important;
+        border-radius: 8px !important;
+        color: var(--kilele-ink) !important;
+    }
+
+    .stTextInput input:focus,
+    .stTextArea textarea:focus,
+    .stNumberInput input:focus {
+        border-color: var(--kilele-leaf) !important;
+        box-shadow: 0 0 0 3px rgba(47, 125, 85, 0.16) !important;
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.4rem;
+        background: rgba(255, 253, 248, 0.68);
+        border: 1px solid var(--kilele-stone);
+        border-radius: 8px;
+        padding: 0.35rem;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 6px;
+        color: var(--kilele-muted) !important;
+        padding: 0.55rem 0.8rem;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background: var(--kilele-forest) !important;
+        color: #ffffff !important;
+    }
+
+    [data-testid="stMetric"] {
+        background: rgba(255, 253, 248, 0.86);
+        border: 1px solid var(--kilele-stone);
+        border-radius: 8px;
+        padding: 0.85rem;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--kilele-ink);
+        font-weight: 800;
+    }
+
+    [data-testid="stExpander"] {
+        background: rgba(255, 253, 248, 0.86);
+        border: 1px solid var(--kilele-stone);
+        border-radius: 8px;
+    }
+
+    .difficulty-easy { color: #2f7d55; font-weight: 800; }
+    .difficulty-moderate { color: #a45f1d; font-weight: 800; }
+    .difficulty-hard { color: #b23b3b; font-weight: 800; }
+    .difficulty-extreme { color: #694d8e; font-weight: 800; }
+
+    .review-rating {
+        color: #a45f1d;
+        font-weight: 800;
+        font-size: 1rem;
+    }
+
+    .review-meta,
+    .trail-meta,
+    .connection-date,
+    .achievement-description {
+        color: var(--kilele-muted);
+        font-size: 0.9rem;
+    }
+
+    .bookmark-notes,
+    .waypoint-item {
+        background: #edf6f1;
+        border-left: 3px solid var(--kilele-leaf);
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin: 0.6rem 0;
+    }
+
+    .category-header {
+        background: #20352c;
+        color: #f7f2e8;
+        border-radius: 8px;
+        padding: 0.85rem 1rem;
+        margin: 1rem 0;
+    }
+
+    .category-header h2,
+    .category-header h3 {
+        color: #f7f2e8 !important;
+        margin: 0 !important;
+    }
+
+    .achievement-icon {
+        font-size: 2.6rem;
+        line-height: 1;
+        text-align: center;
+    }
+
+    .achievement-icon-locked,
+    .achievement-locked {
+        opacity: 0.64;
+    }
+
+    .achievement-name {
+        font-weight: 800;
+        text-align: center;
+        margin-top: 0.5rem;
+    }
+
+    .achievement-points,
+    .achievement-earned {
+        text-align: center;
+        color: var(--kilele-muted);
+        font-size: 0.88rem;
+        margin-top: 0.45rem;
+    }
+
+    .progress-bar-container {
+        background: #e6e0d3;
+        border-radius: 6px;
+        overflow: hidden;
+        height: 24px;
+        margin: 0.7rem 0;
+    }
+
+    .progress-bar {
+        background: var(--kilele-sun);
+        color: #ffffff;
+        height: 24px;
+        text-align: center;
+        font-size: 0.8rem;
+        line-height: 24px;
+        min-width: 24px;
+    }
+
+    .empty-feed {
+        background: var(--kilele-paper);
+        border: 1px dashed var(--kilele-stone);
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .activity-icon {
+        display: inline-block;
+        margin-right: 0.4rem;
+    }
+
+    .activity-user,
+    .user-name {
+        color: var(--kilele-forest);
+        font-weight: 800;
+    }
+
+    .activity-time {
+        color: var(--kilele-muted);
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+
+    .admin-header,
+    .danger-zone {
+        background: var(--kilele-paper);
+        border: 1px solid var(--kilele-stone);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .danger-zone {
+        border-left: 4px solid #b23b3b;
+    }
+
+    .stAlert {
+        border-radius: 8px;
+    }
+
+    img {
+        border-radius: 8px;
+    }
+
+    @media (max-width: 768px) {
+        .block-container {
+            padding: 1rem;
         }
-        
-        /* Enhanced mobile input fields */
-        .stTextInput>div>div>input,
-        .stTextArea>div>div>textarea,
-        .stSelectbox>div>div>select,
-        .stNumberInput>div>div>input {
-            font-size: 16px !important;
-            padding: 14px 18px !important;
-            min-height: 48px !important;
-            border-radius: 10px !important;
-            border-width: 2px !important;
+
+        h1 {
+            font-size: 2rem !important;
         }
-        
-        /* Textarea specific */
-        .stTextArea>div>div>textarea {
-            min-height: 120px !important;
-            resize: vertical !important;
+
+        .hero-title {
+            font-size: 2.2rem;
         }
-        
-        /* Labels larger on mobile */
-        .stTextInput>label,
-        .stTextArea>label,
-        .stSelectbox>label,
-        .stNumberInput>label {
-            font-size: 17px !important;
-            font-weight: 700 !important;
-            margin-bottom: 10px !important;
+
+        .hero-section, .header-section, .section-panel {
+            padding: 1rem;
         }
-        
-        /* Focus states more visible on mobile */
-        .stTextInput>div>div>input:focus,
-        .stTextArea>div>div>textarea:focus,
-        .stNumberInput>div>div>input:focus {
-            border-color: #1e3a5f !important;
-            box-shadow: 0 0 0 4px rgba(30, 58, 95, 0.15) !important;
-            transform: scale(1.01) !important;
+
+        button,
+        .stButton button,
+        .stDownloadButton button {
+            min-height: 46px !important;
         }
-        
-        /* Better error/success feedback */
-        .stTextInput>div>div>input[aria-invalid="true"] {
-            border-color: #ef5350 !important;
-            background: rgba(255, 235, 238, 0.5) !important;
-        }
-        
-        /* Hero sections - smaller on mobile */
-        .hero-section, .header-section {
-            padding: 20px 15px !important;
-            margin-bottom: 20px !important;
-            border-radius: 10px !important;
-        }
-        
-        .hero-section h1, .header-section h1 {
-            font-size: 24px !important;
-        }
-        
-        .hero-section h2, .header-section h2 {
-            font-size: 18px !important;
-        }
-        
-        /* Content cards - stack better on mobile */
-        .content-card, .feature-card, .stat-card {
-            margin-bottom: 15px !important;
-            padding: 15px !important;
-            border-radius: 10px !important;
-        }
-        
-        /* Trail/Hike cards - full width on mobile */
-        .hike-card, .trail-card, .user-card {
-            margin-bottom: 15px !important;
-            padding: 15px !important;
-            width: 100% !important;
-        }
-        
-        /* Buttons - larger tap targets */
-        button, .stButton button {
-            min-height: 44px !important;
-            font-size: 16px !important;
-            padding: 12px 20px !important;
-        }
-        
-        /* Input fields - easier to use on mobile */
-        input, textarea, select {
-            font-size: 16px !important;
-            padding: 12px !important;
-            min-height: 44px !important;
-        }
-        
-        /* Metrics - smaller on mobile */
-        .big-metric {
-            font-size: 28px !important;
-        }
-        
-        /* Columns - stack on mobile */
+
         [data-testid="column"] {
             width: 100% !important;
-            margin-bottom: 10px !important;
+            min-width: 100% !important;
+            margin-bottom: 0.75rem !important;
         }
-        
-        /* Sidebar - easier to open on mobile */
-        [data-testid="stSidebar"] {
-            width: 280px !important;
-        }
-        
-        /* Tables - scroll horizontally on mobile */
+
         table {
             display: block !important;
             overflow-x: auto !important;
             white-space: nowrap !important;
         }
-        
-        /* Text - readable size on mobile */
-        p, div, span {
-            font-size: 15px !important;
-            line-height: 1.5 !important;
-        }
-        
-        /* Headers - proportional on mobile */
-        h1 { font-size: 24px !important; }
-        h2 { font-size: 20px !important; }
-        h3 { font-size: 18px !important; }
-        h4 { font-size: 16px !important; }
-        
-        /* Images - responsive */
-        img {
-            max-width: 100% !important;
-            height: auto !important;
-        }
-        
-        /* Expanders - easier to tap */
-        [data-testid="stExpander"] summary {
-            font-size: 16px !important;
-            padding: 15px !important;
-        }
-        
-        /* Tabs - better spacing */
-        [data-baseweb="tab"] {
-            padding: 12px 15px !important;
-            font-size: 14px !important;
-        }
-        
-        /* File uploader - mobile friendly */
-        [data-testid="stFileUploader"] {
-            font-size: 14px !important;
-        }
-        
-        /* Date/time inputs */
-        [data-baseweb="input"] {
-            font-size: 16px !important;
-        }
-        
-        /* Success/error/warning boxes */
-        .element-container div[data-testid="stNotification"] {
-            font-size: 14px !important;
-            padding: 12px !important;
-        }
-    }
-    
-    /* Tablet: 768px to 1024px */
-    @media only screen and (min-width: 768px) and (max-width: 1024px) {
-        .hero-section, .header-section {
-            padding: 30px !important;
-        }
-        
-        .content-card, .feature-card {
-            padding: 20px !important;
-        }
-        
-        /* Two-column layout on tablet */
-        [data-testid="column"] {
-            width: 48% !important;
-            display: inline-block !important;
-            margin-right: 2% !important;
-        }
-    }
-    
-    /* Touch-friendly enhancements for all mobile devices */
-    @media (hover: none) and (pointer: coarse) {
-        /* Larger tap targets */
-        button, a, [role="button"] {
-            min-height: 44px !important;
-            min-width: 44px !important;
-        }
-        
-        /* Remove hover effects on touch devices */
-        .hike-card:hover, .trail-card:hover, .user-card:hover {
-            transform: none !important;
-        }
-        
-        /* Better spacing for touch */
-        button, input, select, textarea {
-            margin: 8px 0 !important;
-        }
-    }
-    
-    /* Landscape mobile orientation */
-    @media only screen and (max-height: 500px) and (orientation: landscape) {
-        .hero-section, .header-section {
-            padding: 15px !important;
-            margin-bottom: 15px !important;
-        }
-        
-        [data-testid="stSidebar"] {
-            height: 100vh !important;
-            overflow-y: auto !important;
-        }
     }
     </style>
 """
 
+
 def apply_nature_theme():
-    """Apply the nature theme CSS to any Streamlit page"""
+    """Apply the Kilele theme CSS to any Streamlit page."""
     import streamlit as st
-    
-    # Add mobile viewport meta tag
-    st.markdown("""
+
+    st.markdown(
+        """
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    """, unsafe_allow_html=True)
-    
-    # Apply main CSS theme
+        """,
+        unsafe_allow_html=True,
+    )
     st.markdown(NATURE_CSS, unsafe_allow_html=True)

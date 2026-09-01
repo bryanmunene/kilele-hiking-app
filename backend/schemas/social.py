@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -13,15 +13,16 @@ class ReviewCreate(BaseModel):
     visited_date: Optional[datetime] = None
 
 class ReviewPhotoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     photo_url: str
     caption: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 class ReviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     hike_id: int
     user_id: int
@@ -37,15 +38,14 @@ class ReviewResponse(BaseModel):
     user_profile_picture: Optional[str] = None
     photos: List[ReviewPhotoResponse] = []
 
-    class Config:
-        from_attributes = True
-
 # Bookmark Schemas
 class BookmarkCreate(BaseModel):
     hike_id: int
     notes: Optional[str] = Field(None, max_length=500)
 
 class BookmarkResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     hike_id: int
@@ -55,14 +55,13 @@ class BookmarkResponse(BaseModel):
     hike_location: Optional[str] = None
     hike_image: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 # Follow Schemas
 class FollowCreate(BaseModel):
     following_id: int
 
 class FollowResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     follower_id: int
     following_id: int
@@ -70,11 +69,10 @@ class FollowResponse(BaseModel):
     username: Optional[str] = None
     profile_picture: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 # Achievement Schemas
 class AchievementResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     description: Optional[str]
@@ -86,11 +84,10 @@ class AchievementResponse(BaseModel):
     progress: int = 0
     earned_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
-
 # Activity Schemas
 class ActivityResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     activity_type: str
@@ -101,9 +98,6 @@ class ActivityResponse(BaseModel):
     username: Optional[str] = None
     user_profile_picture: Optional[str] = None
     hike_name: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 # Statistics Schemas
 class UserStatistics(BaseModel):

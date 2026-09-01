@@ -174,7 +174,7 @@ else:
                 # Remember me checkbox
                 remember_me = st.checkbox("Remember me for 30 days", value=True)
                 
-                submit = st.form_submit_button("🔐 Login", use_container_width=True)
+                submit = st.form_submit_button("🔐 Login", width="stretch")
                 
                 if submit:
                     if not username or not password:
@@ -236,7 +236,7 @@ else:
                     help="Must match your password"
                 )
                 
-                submit_reg = st.form_submit_button("📝 Create Account", use_container_width=True)
+                submit_reg = st.form_submit_button("📝 Create Account", width="stretch")
                 
                 if submit_reg:
                     if not all([reg_username, reg_email, reg_fullname, reg_password, reg_confirm]):

@@ -1,9 +1,11 @@
 import streamlit as st
+from auth import is_authenticated, get_current_user, restore_session_from_storage
 from services import add_emergency_contact, get_emergency_contacts, delete_emergency_contact
 from nature_theme import apply_nature_theme
 
 st.set_page_config(page_title="Emergency Contacts - Kilele Explorers", page_icon="🚨", layout="wide")
 apply_nature_theme()
+restore_session_from_storage()
 # Mobile-friendly input styling
 st.markdown("""
     <style>
@@ -18,12 +20,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 # Check if user is logged in
-if 'user' not in st.session_state:
+if not is_authenticated():
     st.warning("⚠️ Please log in to manage emergency contacts")
-    st.page_link("pages/3_🔐_Login.py", label="Go to Login", icon="🔐")
+    if st.button("Go to Login"):
+        st.switch_page("pages/0_🔐_Login.py")
     st.stop()
 
-user = st.session_state.user
+user = get_current_user()
 
 # Page header
 st.title("🚨 Emergency Contacts")
@@ -86,7 +89,7 @@ with col2:
         relation = st.text_input("Relationship", placeholder="e.g., Spouse, Friend, Parent")
         is_primary = st.checkbox("Set as primary contact", help="This contact will be notified first")
         
-        submit = st.form_submit_button("Add Contact", type="primary", use_container_width=True)
+        submit = st.form_submit_button("Add Contact", type="primary", width="stretch")
         
         if submit:
             if not name or not phone:

@@ -14,9 +14,6 @@ from image_utils import display_image
 from nature_theme import apply_nature_theme
 from mpesa_service import initiate_stk_push, format_phone_number_display, validate_mpesa_amount
 
-# Restore session
-restore_session_from_storage()
-
 # Page config
 st.set_page_config(
     page_title="Register for Hikes - Kilele",
@@ -24,6 +21,9 @@ st.set_page_config(
     layout="wide"
 )
 apply_nature_theme()
+
+# Restore session after page configuration.
+restore_session_from_storage()
 
 # Auth check
 if not is_authenticated():

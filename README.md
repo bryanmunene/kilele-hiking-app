@@ -1,61 +1,64 @@
-# Kilele Hiking Project
+# Kilele Hiking
 
-Full-stack hiking trail application for Kenya with Python FastAPI backend and React Native Expo frontend.
-
-## Quick Start
-
-### Backend (Python FastAPI)
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env
-python seed_data.py
-python main.py
-```
-Visit: http://localhost:8000/docs
-
-### Frontend (Streamlit)
-```bash
-cd frontend
-pip install -r requirements.txt
-streamlit run app.py
-```
-Visit: http://localhost:8501
+Kilele Hiking is a Python web app for discovering, planning, tracking, reviewing, and organizing Kenyan hiking trails. The repository contains a FastAPI backend and a Streamlit frontend; there is no React Native or Expo app in this codebase.
 
 ## Project Structure
 
+```text
+backend/    FastAPI API, SQLAlchemy models, SQLite/PostgreSQL configuration
+frontend/   Streamlit app, local database service layer, multipage UI
+tests/      Contract tests for backend importability and frontend services
 ```
-Kilele Project/
-├── backend/         # Streamlit Python webrver
-├── frontend/        # React Native Expo app
-└── HikingApp/       # (Legacy - can be removed)
+
+## Quick Start
+
+### Backend API
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python seed_data.py
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-## Features
+Open `http://127.0.0.1:8000/docs` for API documentation.
 
-- 7 Kenyan hiking trails (Mount Kenya, Ngong Hills, Karura Forest, etc.)
-- RESTful API with SQLite database
-- Streamlit web app with filtering and sorting
-- Mobile-responsive design
-- No JavaScript/npm required - 100% Python!
+### Streamlit Frontend
 
-## Documentation
+```bash
+cd frontend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python seed_database.py
+streamlit run Home.py --server.port 8501
+```
 
-- **Full Architecture**: See `.github/copilot-instructions.md`
-- **Backend API**: See `backend/README.md`
-- **API Docs**: http://localhost:8000/docs (when running)
+Open `http://localhost:8501`.
 
-## Development
+## Configuration
 
-1. Start backend: `cd backend && pystreamlit run app.py`
-3. Open http://localhost:8501 in your browser
+Copy `.env.example` to `.env` for local backend settings. For Streamlit secrets, copy `frontend/.streamlit/secrets.toml.example` to `frontend/.streamlit/secrets.toml` and fill in real values locally. The real `secrets.toml` file is intentionally ignored by git.
 
-## Tech Stack
+Strava, Sentry, Cloudinary, email, and wearable imports are optional integrations. The app now starts locally even when optional integration packages or credentials are absent; related features show unavailable/configuration messaging until those dependencies are installed and configured.
 
-- **Backend**: Python 3, FastAPI, SQLAlchemy, SQLite
-- **Frontend**: Streamlit, Requests
-- **100% Python** - No JavaScript/Node.js required!
-- **Frontend**: React Native 0.79, Expo 53, React 19
-- **API**: RESTful with automatic OpenAPI docs
+## Tests
+
+From the repository root:
+
+```bash
+python -m compileall backend frontend tests
+python -m unittest discover -s tests -v
+```
+
+## Default Seed Users
+
+The Streamlit seed script creates:
+
+```text
+admin / admin123
+Nesh / password123
+demo / demo123
+```

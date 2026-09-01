@@ -15,8 +15,12 @@ class Settings:
     
     def _get(self, key: str, default: any = None) -> any:
         """Get value from secrets or environment"""
-        if self._secrets and key in self._secrets:
-            return self._secrets[key]
+        if self._secrets is not None:
+            try:
+                if key in self._secrets:
+                    return self._secrets[key]
+            except Exception:
+                pass
         return os.getenv(key, default)
     
     @property

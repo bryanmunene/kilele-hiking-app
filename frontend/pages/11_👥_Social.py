@@ -118,7 +118,7 @@ with col3:
 st.markdown("---")
 
 # Tabs for followers and following
-tab1, tab2, tab3 = st.tabs(["👥 Followers", "👤 Following", "📊 My Stats"])
+tab1, tab2, tab3, tab4 = st.tabs(["👥 Followers", "👤 Following", "📊 My Stats", "🔎 Find Hikers"])
 
 # Tab 1: Followers
 with tab1:
@@ -155,8 +155,14 @@ with tab1:
                     # Check if we're following them back
                     following_ids = [f['following_user_id'] for f in following]
                     if follower['follower_user_id'] not in following_ids:
-                        if st.button("Follow Back", key=f"follow_back_{follower['id']}", use_container_width=True):
-                            st.info("Follow back feature coming soon!")
+                        if st.button("Follow Back", key=f"follow_back_{follower['id']}", width="stretch"):
+                            try:
+                                follow_user(get_current_user()['id'], follower['follower_user_id'])
+                                st.success("✅ Followed back")
+                                st.cache_data.clear()
+                                st.rerun()
+                            except ValueError as e:
+                                st.info(str(e))
                     else:
                         st.success("✓ Following")
                 
@@ -194,7 +200,7 @@ with tab2:
                     st.markdown(f"<div class='connection-date'>Following since {format_date(follow['created_at'])}</div>", unsafe_allow_html=True)
                 
                 with col2:
-                    if st.button("Unfollow", key=f"unfollow_{follow['id']}", use_container_width=True, type="secondary"):
+                    if st.button("Unfollow", key=f"unfollow_{follow['id']}", width="stretch", type="secondary"):
                         if unfollow_user(follow['id']):
                             st.rerun()
                 
@@ -267,6 +273,49 @@ with tab3:
             distance_progress = (total_distance / next_distance_milestone) * 100
             st.progress(min(distance_progress / 100, 1.0))
             st.markdown(f"**Distance Milestone:** {total_distance:.1f}/{next_distance_milestone} km ({distance_progress:.0f}%)")
+
+# Tab 4: Find hikers
+with tab4:
+    st.subheader("Find Hikers")
+    st.markdown("*Search by username or full name and build your hiking circle*")
+
+    query = st.text_input("Search hikers", placeholder="Try admin, demo, or a friend's name")
+    if not query:
+        st.info("Enter at least two characters to search for hikers.")
+    elif len(query.strip()) < 2:
+        st.warning("Please enter at least two characters.")
+    else:
+        try:
+            current_user = get_current_user()
+            following_ids = {f['following_user_id'] for f in following}
+            results = [
+                result for result in search_users(query.strip())
+                if result['id'] != current_user['id']
+            ]
+
+            if not results:
+                st.info("No hikers matched your search.")
+            else:
+                for result in results:
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        display_name = result.get('full_name') or result['username']
+                        st.markdown(f"**{display_name}**")
+                        st.caption(f"@{result['username']}")
+                    with col2:
+                        if result['id'] in following_ids:
+                            st.success("Following")
+                        elif st.button("Follow", key=f"follow_user_{result['id']}", width="stretch"):
+                            try:
+                                follow_user(current_user['id'], result['id'])
+                                st.success("✅ Followed")
+                                st.cache_data.clear()
+                                st.rerun()
+                            except ValueError as e:
+                                st.info(str(e))
+                    st.markdown("---")
+        except Exception as e:
+            st.error(f"Search failed: {e}")
 
 # Footer
 st.markdown("---")

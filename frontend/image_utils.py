@@ -21,10 +21,20 @@ def display_image(image_name: str, **kwargs):
     """
     if not image_name:
         return
+
+    if 'use_column_width' in kwargs:
+        use_column_width = kwargs.pop('use_column_width')
+        if 'width' not in kwargs:
+            kwargs['width'] = 'stretch' if use_column_width else 'content'
+
+    if 'use_container_width' in kwargs:
+        use_container_width = kwargs.pop('use_container_width')
+        if 'width' not in kwargs:
+            kwargs['width'] = 'stretch' if use_container_width else 'content'
     
     # Set mobile-responsive default if width not specified
-    if 'width' not in kwargs and 'use_column_width' not in kwargs:
-        kwargs['use_column_width'] = True
+    if 'width' not in kwargs:
+        kwargs['width'] = 'stretch'
     
     # Check if it's a URL
     if image_name.startswith('http'):

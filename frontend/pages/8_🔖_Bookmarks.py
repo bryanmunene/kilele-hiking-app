@@ -224,11 +224,11 @@ with tab1:
                 
                 with col2:
                     # Action buttons
-                    if st.button("🗺️ View", key=f"view_{bookmark['id']}", use_container_width=True):
+                    if st.button("🗺️ View", key=f"view_{bookmark['id']}", width="stretch"):
                         st.session_state['selected_trail'] = hike
                         st.switch_page("pages/1_🗺️_Map_View.py")
                     
-                    if st.button("🗑️ Remove", key=f"remove_{bookmark['id']}", use_container_width=True, type="secondary"):
+                    if st.button("🗑️ Remove", key=f"remove_{bookmark['id']}", width="stretch", type="secondary"):
                         if remove_bookmark(bookmark['id']):
                             st.rerun()
                 
@@ -291,7 +291,7 @@ with tab2:
                     help="Add notes to remember why you bookmarked this trail or any plans you have"
                 )
                 
-                submitted = st.form_submit_button("🔖 Bookmark Trail", use_container_width=True)
+                submitted = st.form_submit_button("🔖 Bookmark Trail", width="stretch")
                 
                 if submitted and selected_hike:
                     if add_bookmark(selected_hike['id'], notes):

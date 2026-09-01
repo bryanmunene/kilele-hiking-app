@@ -8,6 +8,7 @@ venv/
 env/
 ENV/
 .venv
+.venv*/
 
 # Database
 *.db
@@ -36,6 +37,7 @@ Thumbs.db
 
 # Streamlit
 .streamlit/secrets.toml
+frontend/.streamlit/secrets.toml
 
 # Static files (uploaded content)
 backend/static/profile_pictures/*

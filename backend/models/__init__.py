@@ -8,6 +8,7 @@ from models.achievement import Achievement, UserAchievement
 from models.activity import Activity
 from models.message import Message, Conversation, ConversationParticipant
 from models.equipment import Equipment, PlannedHike
+from models.strava import StravaActivity, StravaToken, StravaWebhookSubscription
 
 __all__ = [
     "Hike",
@@ -27,4 +28,7 @@ __all__ = [
     "ConversationParticipant",
     "Equipment",
     "PlannedHike",
+    "StravaActivity",
+    "StravaToken",
+    "StravaWebhookSubscription",
 ]

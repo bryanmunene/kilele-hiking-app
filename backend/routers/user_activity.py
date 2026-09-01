@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from datetime import datetime
 
@@ -107,6 +108,10 @@ def update_session(
     # If marking as inactive (completed), set completed timestamp
     if update_data.get('is_active') == False and db_session.is_active:
         db_session.completed_at = datetime.utcnow()
+        db_session.ended_at = db_session.completed_at
+        db_session.status = "completed"
+    elif update_data.get('is_active') == True:
+        db_session.status = "in_progress"
     
     db.commit()
     db.refresh(db_session)
@@ -225,14 +230,14 @@ def get_user_stats(
     total_distance = db.query(HikeSession).filter(
         HikeSession.user_id == current_user.id
     ).with_entities(
-        db.func.sum(HikeSession.distance_covered_km)
+        func.sum(HikeSession.distance_covered_km)
     ).scalar() or 0
     
     # Total duration
     total_duration = db.query(HikeSession).filter(
         HikeSession.user_id == current_user.id
     ).with_entities(
-        db.func.sum(HikeSession.duration_minutes)
+        func.sum(HikeSession.duration_minutes)
     ).scalar() or 0
     
     # Saved hikes count

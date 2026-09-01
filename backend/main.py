@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 import os
 import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
 
 # Load environment variables first
 load_dotenv()
@@ -12,14 +14,13 @@ load_dotenv()
 # Initialize Sentry error tracking (if configured)
 try:
     import sentry_config
-except:
+except Exception:
     pass
 
 from database import engine, Base, init_database
 from routers import hikes, auth, user_activity, social, messaging, wearable, strava
 from config import settings
-from rate_limiter import limiter, rate_limit_handler
-from slowapi.errors import RateLimitExceeded
+from rate_limiter import RateLimitExceeded, limiter, rate_limit_handler
 
 # Set up logging
 logging.basicConfig(
@@ -35,6 +36,34 @@ try:
 except Exception as e:
     logger.error(f"❌ Database initialization failed: {e}")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start and stop optional background services with the API."""
+    logger.info(f"🚀 Kilele API starting...")
+    logger.info(f"📦 Environment: {settings.ENVIRONMENT}")
+    logger.info(f"🗄️  Database: {'PostgreSQL' if settings.use_postgresql else 'SQLite'}")
+    logger.info(f"☁️  Cloudinary: {'✅ Enabled' if settings.has_cloudinary else '❌ Disabled'}")
+    logger.info(f"📧 Email: {'✅ Enabled' if settings.has_email else '❌ Disabled'}")
+    logger.info(f"🔍 Sentry: {'✅ Enabled' if settings.has_sentry else '❌ Disabled'}")
+
+    try:
+        from strava_scheduler import start_scheduler
+        start_scheduler()
+        logger.info("🟠 Strava auto-sync scheduler started")
+    except Exception as e:
+        logger.warning(f"⚠️ Strava scheduler not started: {e}")
+
+    try:
+        yield
+    finally:
+        try:
+            from strava_scheduler import stop_scheduler
+            stop_scheduler()
+            logger.info("🟠 Strava scheduler stopped")
+        except Exception:
+            pass
+
 # Create FastAPI app
 app = FastAPI(
     title="Kilele Hiking API",
@@ -43,6 +72,7 @@ app = FastAPI(
     debug=settings.DEBUG,
     docs_url="/docs" if not settings.is_production else None,  # Hide docs in production
     redoc_url="/redoc" if not settings.is_production else None,
+    lifespan=lifespan,
 )
 
 # Add rate limiting
@@ -80,38 +110,11 @@ app.include_router(wearable.router, tags=["wearable"])
 app.include_router(strava.router, tags=["strava"])
 
 # Mount static files for images
-try:
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-except:
-    logger.warning("⚠️ Static files directory not found")
-
-@app.on_event("startup")
-async def startup_event():
-    """Log startup information"""
-    logger.info(f"🚀 Kilele API starting...")
-    logger.info(f"📦 Environment: {settings.ENVIRONMENT}")
-    logger.info(f"🗄️  Database: {'PostgreSQL' if settings.use_postgresql else 'SQLite'}")
-    logger.info(f"☁️  Cloudinary: {'✅ Enabled' if settings.has_cloudinary else '❌ Disabled'}")
-    logger.info(f"📧 Email: {'✅ Enabled' if settings.has_email else '❌ Disabled'}")
-    logger.info(f"🔍 Sentry: {'✅ Enabled' if settings.has_sentry else '❌ Disabled'}")
-    
-    # Start Strava auto-sync scheduler
-    try:
-        from strava_scheduler import start_scheduler
-        start_scheduler()
-        logger.info("🟠 Strava auto-sync scheduler started")
-    except Exception as e:
-        logger.warning(f"⚠️ Strava scheduler not started: {e}")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    try:
-        from strava_scheduler import stop_scheduler
-        stop_scheduler()
-        logger.info("🟠 Strava scheduler stopped")
-    except:
-        pass
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+else:
+    logger.warning("⚠️ Static files directory not found: %s", STATIC_DIR)
 
 @app.get("/")
 def read_root():

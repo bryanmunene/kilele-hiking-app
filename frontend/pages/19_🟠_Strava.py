@@ -75,7 +75,7 @@ if is_connected:
         
         days = st.slider("Sync activities from last X days", 7, 365, 30)
         
-        if st.button("🔄 Sync Now", type="primary", use_container_width=True):
+        if st.button("🔄 Sync Now", type="primary", width="stretch"):
             with st.spinner("Syncing activities from Strava..."):
                 try:
                     response = requests.post(
@@ -99,7 +99,7 @@ if is_connected:
         # Auto-sync toggle
         sync_enabled = st.toggle("Enable auto-sync", value=True)
         
-        if st.button("💾 Save Settings", use_container_width=True):
+        if st.button("💾 Save Settings", width="stretch"):
             try:
                 response = requests.post(
                     f"{API_BASE_URL}/api/strava/toggle-autosync?enabled={sync_enabled}",
@@ -115,7 +115,7 @@ if is_connected:
         
         st.markdown("---")
         
-        if st.button("🔌 Disconnect Strava", type="secondary", use_container_width=True):
+        if st.button("🔌 Disconnect Strava", type="secondary", width="stretch"):
             try:
                 response = requests.delete(
                     f"{API_BASE_URL}/api/strava/disconnect",
@@ -157,7 +157,7 @@ if is_connected:
                     "Trail Match": "✅ " + act['matched_trail_name'] if act['is_matched'] else "❌ Not matched"
                 } for act in activities])
                 
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width="stretch", hide_index=True)
             else:
                 st.info("No activities synced yet. Click 'Sync Now' above.")
     except Exception as e:
@@ -191,7 +191,7 @@ else:
     st.markdown("---")
     
     # Connect button
-    if st.button("🟠 Connect Strava", type="primary", use_container_width=True):
+    if st.button("🟠 Connect Strava", type="primary", width="stretch"):
         try:
             response = requests.get(
                 f"{API_BASE_URL}/api/strava/connect",

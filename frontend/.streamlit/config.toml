@@ -1,14 +1,14 @@
 [theme]
-primaryColor = "#43a047"
-backgroundColor = "#e8f5e9"
-secondaryBackgroundColor = "#f1f8e9"
-textColor = "#1b5e20"
+primaryColor = "#2f7d55"
+backgroundColor = "#f6f4ed"
+secondaryBackgroundColor = "#fffdf8"
+textColor = "#17211c"
 font = "sans serif"
 
 [server]
 headless = true
 port = 8501
-enableCORS = false
+enableCORS = true
 enableXsrfProtection = true
 
 [browser]

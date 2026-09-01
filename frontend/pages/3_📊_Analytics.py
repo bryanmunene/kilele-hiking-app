@@ -101,7 +101,7 @@ def main():
             },
             hole=0.4
         )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, width="stretch")
     
     with col_diff2:
         # Bar chart with metrics
@@ -125,7 +125,7 @@ def main():
                 'Extreme': '#9c27b0'
             }
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width="stretch")
     
     # Distance and Duration Analysis
     st.markdown("---")
@@ -154,7 +154,7 @@ def main():
                 'Extreme': '#9c27b0'
             }
         )
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.plotly_chart(fig_scatter, width="stretch")
     
     with col_dist2:
         # Box plot
@@ -172,7 +172,7 @@ def main():
                 'Extreme': '#9c27b0'
             }
         )
-        st.plotly_chart(fig_box, use_container_width=True)
+        st.plotly_chart(fig_box, width="stretch")
     
     # Trail Types
     st.markdown("---")
@@ -192,7 +192,7 @@ def main():
             color='Trail Type',
             color_discrete_sequence=px.colors.qualitative.Set2
         )
-        st.plotly_chart(fig_trail_type, use_container_width=True)
+        st.plotly_chart(fig_trail_type, width="stretch")
     
     with col_type2:
         # Sunburst chart
@@ -209,7 +209,7 @@ def main():
                 'Extreme': '#9c27b0'
             }
         )
-        st.plotly_chart(fig_sunburst, use_container_width=True)
+        st.plotly_chart(fig_sunburst, width="stretch")
     
     # Elevation Analysis
     st.markdown("---")
@@ -228,7 +228,7 @@ def main():
                 labels={'elevation_gain_m': 'Elevation Gain (m)'},
                 color_discrete_sequence=['#2e7d32']
             )
-            st.plotly_chart(fig_elev_hist, use_container_width=True)
+            st.plotly_chart(fig_elev_hist, width="stretch")
         
         with col_elev2:
             # Top trails by elevation
@@ -249,7 +249,7 @@ def main():
                     'Extreme': '#9c27b0'
                 }
             )
-            st.plotly_chart(fig_top_elev, use_container_width=True)
+            st.plotly_chart(fig_top_elev, width="stretch")
     else:
         st.info("No elevation data available")
     
@@ -267,7 +267,7 @@ def main():
     if display_cols:
         st.dataframe(
             df[display_cols].sort_values('distance_km', ascending=False),
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
     
@@ -282,7 +282,7 @@ def main():
             data=csv_data,
             file_name="kilele_trails_complete.csv",
             mime="text/csv",
-            use_container_width=True
+            width="stretch"
         )
     
     with col_download2:
@@ -292,7 +292,7 @@ def main():
             data=json_data,
             file_name="kilele_trails_complete.json",
             mime="application/json",
-            use_container_width=True
+            width="stretch"
         )
     
     # Summary statistics
@@ -301,7 +301,7 @@ def main():
     
     st.dataframe(
         df[['distance_km', 'estimated_duration_hours', 'elevation_gain_m']].describe(),
-        use_container_width=True
+        width="stretch"
     )
 
 if __name__ == "__main__":

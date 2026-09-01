@@ -1,6 +1,5 @@
-from sqlalchemy import create_engine, event, pool
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, event, inspect, pool
+from sqlalchemy.orm import declarative_base, sessionmaker
 from contextlib import contextmanager
 import os
 from dotenv import load_dotenv
@@ -63,8 +62,42 @@ def get_db_context():
     finally:
         db.close()
 
+# Lightweight local migrations for existing SQLite databases.
+def _add_missing_sqlite_columns():
+    if engine.dialect.name != "sqlite":
+        return
+
+    migrations = {
+        "hike_sessions": {
+            "ended_at": "DATETIME",
+            "status": "VARCHAR(30) DEFAULT 'in_progress'",
+            "duration_hours": "FLOAT DEFAULT 0",
+            "elevation_gain_m": "FLOAT DEFAULT 0",
+            "route_data": "TEXT",
+        },
+    }
+
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+
+    with engine.begin() as conn:
+        for table_name, columns in migrations.items():
+            if table_name not in existing_tables:
+                continue
+
+            existing_columns = {
+                row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table_name})")
+            }
+            for column_name, column_sql in columns.items():
+                if column_name not in existing_columns:
+                    conn.exec_driver_sql(
+                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
+                    )
+
+
 # Initialize database (create tables)
 def init_database():
     """Create all database tables"""
     from models import user, hike, review, achievement, activity, bookmark, follow, hike_session, message
     Base.metadata.create_all(bind=engine)
+    _add_missing_sqlite_columns()

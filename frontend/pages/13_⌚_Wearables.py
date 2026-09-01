@@ -325,7 +325,7 @@ with tab2:
                 st.warning("Could not load trails list")
         
         # Upload button
-        if st.button("🚀 Import Data", type="primary", use_container_width=True):
+        if st.button("🚀 Import Data", type="primary", width="stretch"):
             with st.spinner("Processing your tracking data..."):
                 try:
                     # Prepare file for upload

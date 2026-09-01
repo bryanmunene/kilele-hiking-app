@@ -49,7 +49,7 @@ def create_review(
     
     # Create review
     db_review = Review(
-        **review.dict(),
+        **review.model_dump(),
         user_id=current_user.id
     )
     db.add(db_review)
@@ -66,7 +66,7 @@ def create_review(
     db.commit()
     db.refresh(db_review)
     
-    response = ReviewResponse.from_orm(db_review)
+    response = ReviewResponse.model_validate(db_review)
     response.username = current_user.username
     response.user_profile_picture = current_user.profile_picture
     return response
@@ -85,7 +85,7 @@ def get_hike_reviews(
     
     result = []
     for review in reviews:
-        response = ReviewResponse.from_orm(review)
+        response = ReviewResponse.model_validate(review)
         response.username = review.user.username
         response.user_profile_picture = review.user.profile_picture
         result.append(response)
@@ -180,12 +180,12 @@ def create_bookmark(
     if existing:
         raise HTTPException(status_code=400, detail="Already bookmarked")
     
-    db_bookmark = Bookmark(**bookmark.dict(), user_id=current_user.id)
+    db_bookmark = Bookmark(**bookmark.model_dump(), user_id=current_user.id)
     db.add(db_bookmark)
     db.commit()
     db.refresh(db_bookmark)
     
-    response = BookmarkResponse.from_orm(db_bookmark)
+    response = BookmarkResponse.model_validate(db_bookmark)
     hike = db.query(Hike).filter(Hike.id == bookmark.hike_id).first()
     if hike:
         response.hike_name = hike.name
@@ -204,7 +204,7 @@ def get_my_bookmarks(
     
     result = []
     for bookmark in bookmarks:
-        response = BookmarkResponse.from_orm(bookmark)
+        response = BookmarkResponse.model_validate(bookmark)
         hike = db.query(Hike).filter(Hike.id == bookmark.hike_id).first()
         if hike:
             response.hike_name = hike.name
@@ -257,7 +257,7 @@ def follow_user(
     db.commit()
     db.refresh(db_follow)
     
-    response = FollowResponse.from_orm(db_follow)
+    response = FollowResponse.model_validate(db_follow)
     user = db.query(User).filter(User.id == follow.following_id).first()
     if user:
         response.username = user.username
@@ -293,7 +293,7 @@ def get_followers(
     
     result = []
     for follow in follows:
-        response = FollowResponse.from_orm(follow)
+        response = FollowResponse.model_validate(follow)
         user = db.query(User).filter(User.id == follow.follower_id).first()
         if user:
             response.username = user.username
@@ -312,7 +312,7 @@ def get_following(
     
     result = []
     for follow in follows:
-        response = FollowResponse.from_orm(follow)
+        response = FollowResponse.model_validate(follow)
         user = db.query(User).filter(User.id == follow.following_id).first()
         if user:
             response.username = user.username
@@ -345,7 +345,7 @@ def get_activity_feed(
     
     result = []
     for activity in activities:
-        response = ActivityResponse.from_orm(activity)
+        response = ActivityResponse.model_validate(activity)
         response.username = activity.user.username
         response.user_profile_picture = activity.user.profile_picture
         if activity.hike_id:
@@ -373,7 +373,7 @@ def get_my_achievements(
     
     result = []
     for ach in all_achievements:
-        response = AchievementResponse.from_orm(ach)
+        response = AchievementResponse.model_validate(ach)
         if ach.id in user_ach_dict:
             ua = user_ach_dict[ach.id]
             response.earned = ua.completed
@@ -398,9 +398,12 @@ def get_user_statistics(
     ).all()
     
     total_hikes = len(completed_sessions)
-    total_distance = sum(s.distance_km or 0 for s in completed_sessions)
+    total_distance = sum(s.distance_covered_km or 0 for s in completed_sessions)
     total_elevation = sum(s.elevation_gain_m or 0 for s in completed_sessions)
-    total_duration = sum(s.duration_hours or 0 for s in completed_sessions)
+    total_duration = sum(
+        s.duration_hours if s.duration_hours is not None else (s.duration_minutes or 0) / 60
+        for s in completed_sessions
+    )
     
     # Review stats
     reviews = db.query(Review).filter(Review.user_id == current_user.id).all()

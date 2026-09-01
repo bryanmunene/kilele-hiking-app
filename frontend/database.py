@@ -3,9 +3,8 @@ Unified database module for Streamlit app
 SQLAlchemy with SQLite/PostgreSQL support
 """
 import streamlit as st
-from sqlalchemy import create_engine, event
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, event, inspect
+from sqlalchemy.orm import declarative_base, sessionmaker
 from contextlib import contextmanager
 import os
 
@@ -60,10 +59,72 @@ def get_db():
     finally:
         db.close()
 
+def _add_missing_sqlite_columns():
+    """Apply small, backwards-compatible SQLite migrations."""
+    if engine.dialect.name != "sqlite":
+        return
+
+    migrations = {
+        "users": {
+            "bio": "TEXT",
+            "experience_level": "VARCHAR DEFAULT 'Beginner'",
+            "is_admin": "BOOLEAN DEFAULT 0",
+            "two_factor_secret": "VARCHAR",
+            "two_factor_enabled": "BOOLEAN DEFAULT 0",
+        },
+        "reviews": {
+            "title": "VARCHAR",
+            "difficulty_rating": "INTEGER",
+            "trail_condition": "VARCHAR",
+            "conditions": "TEXT",
+            "visited_date": "DATETIME",
+            "helpful_count": "INTEGER DEFAULT 0",
+        },
+        "bookmarks": {
+            "notes": "VARCHAR(500)",
+        },
+        "achievements": {
+            "category": "VARCHAR DEFAULT 'milestones'",
+            "requirement": "VARCHAR",
+            "requirement_type": "VARCHAR",
+            "requirement_value": "FLOAT DEFAULT 0",
+        },
+        "user_achievements": {
+            "progress": "INTEGER DEFAULT 0",
+            "completed": "BOOLEAN DEFAULT 0",
+        },
+        "goals": {
+            "completed_at": "DATETIME",
+        },
+        "planned_hikes": {
+            "price": "FLOAT DEFAULT 0",
+            "max_participants": "INTEGER",
+        },
+    }
+
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+
+    with engine.begin() as conn:
+        for table_name, columns in migrations.items():
+            if table_name not in existing_tables:
+                continue
+
+            existing_columns = {
+                row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table_name})")
+            }
+            for column_name, column_sql in columns.items():
+                if column_name not in existing_columns:
+                    conn.exec_driver_sql(
+                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
+                    )
+
+
 def init_database():
-    """Initialize database tables"""
+    """Initialize database tables and apply lightweight local migrations."""
     from models import Base as ModelsBase
     ModelsBase.metadata.create_all(bind=engine)
+    _add_missing_sqlite_columns()
 
 @st.cache_resource
 def get_engine():

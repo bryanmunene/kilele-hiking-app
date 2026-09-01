@@ -9,7 +9,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import init_database
-from services import get_user_sessions, get_following, get_reviews
+from services import get_activity_feed, get_following
 from auth import is_authenticated, get_current_user
 from nature_theme import apply_nature_theme
 
@@ -40,10 +40,7 @@ def fetch_activity_feed():
     try:
         user = get_current_user()
         if user:
-            sessions = get_user_sessions(user['id'])
-            reviews = get_reviews()
-            # Combine activities (simplified)
-            return sessions[:10]  # Return recent sessions as feed
+            return get_activity_feed(user['id'], limit=20)
         return []
     except Exception as e:
         st.error(f"Error fetching feed: {e}")
@@ -118,7 +115,7 @@ with st.sidebar:
     else:
         st.info("You're not following anyone yet")
         if st.button("Find Users to Follow"):
-            st.switch_page("pages/9_👥_Social.py")
+            st.switch_page("pages/11_👥_Social.py")
 
 # Main feed
 activities = fetch_activity_feed()
@@ -134,8 +131,8 @@ if not activities:
     
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        if st.button("Find Hikers to Follow", use_container_width=True):
-            st.switch_page("pages/9_👥_Social.py")
+        if st.button("Find Hikers to Follow", width="stretch"):
+            st.switch_page("pages/11_👥_Social.py")
 else:
     # Filter options
     col1, col2 = st.columns([2, 1])
@@ -228,8 +225,8 @@ with col1:
         <p>Connect with active hikers to see more updates</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Find Hikers", use_container_width=True):
-        st.switch_page("pages/9_👥_Social.py")
+    if st.button("Find Hikers", width="stretch"):
+        st.switch_page("pages/11_👥_Social.py")
 
 with col2:
     st.markdown("""
@@ -238,7 +235,7 @@ with col2:
         <p>Write reviews and complete hikes to engage</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Write Review", use_container_width=True):
+    if st.button("Write Review", width="stretch"):
         st.switch_page("pages/7_⭐_Reviews.py")
 
 with col3:
@@ -248,5 +245,5 @@ with col3:
         <p>Complete challenges to unlock badges</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("View Achievements", use_container_width=True):
+    if st.button("View Achievements", width="stretch"):
         st.switch_page("pages/10_🏆_Achievements.py")

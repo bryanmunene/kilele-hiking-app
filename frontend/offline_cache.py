@@ -168,14 +168,14 @@ def prepare_offline_hike_ui(hike_id: int, hike_data: Dict[str, Any]):
             
             st.success(f"✅ Trail data is cached and ready for offline use (downloaded {time_str})")
             
-            if st.button("🔄 Refresh Cached Data", use_container_width=True):
+            if st.button("🔄 Refresh Cached Data", width="stretch"):
                 fetch_and_cache_trail_data(hike_id, hike_data)
                 st.rerun()
         else:
             st.info("💡 Download trail data to use this hike offline")
     
     with col2:
-        if st.button("📥 Download", type="primary", use_container_width=True):
+        if st.button("📥 Download", type="primary", width="stretch"):
             with st.spinner("Downloading trail data..."):
                 fetch_and_cache_trail_data(hike_id, hike_data)
                 st.success("✅ Ready for offline use!")

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import Optional
 from datetime import datetime
 
@@ -15,15 +15,14 @@ class UserLogin(BaseModel):
     password: str
 
 class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     is_active: bool
     profile_picture: Optional[str] = None
     two_fa_enabled: bool = False
     created_at: Optional[datetime]
     last_login: Optional[datetime]
-
-    class Config:
-        from_attributes = True
 
 class Token(BaseModel):
     access_token: str

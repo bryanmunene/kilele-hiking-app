@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -34,9 +34,8 @@ class HikeUpdate(BaseModel):
     image_url: Optional[str] = Field(None, max_length=500)
 
 class HikeResponse(HikeBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
-
-    class Config:
-        from_attributes = True

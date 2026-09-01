@@ -138,9 +138,9 @@ if active_sessions:
                 
                 col_a, col_b = st.columns(2)
                 with col_a:
-                    update_btn = st.form_submit_button("💾 Update Progress", use_container_width=True)
+                    update_btn = st.form_submit_button("💾 Update Progress", width="stretch")
                 with col_b:
-                    complete_btn = st.form_submit_button("✅ Complete Hike", use_container_width=True)
+                    complete_btn = st.form_submit_button("✅ Complete Hike", width="stretch")
                 
                 if update_btn:
                     update_data = {
@@ -223,7 +223,7 @@ if hikes:
                 st.write(f"**Best Season:** {hike['best_season']}")
             
             with col2:
-                if st.button(f"▶️ Start Tracking", key=f"start_{hike['id']}", use_container_width=True):
+                if st.button(f"▶️ Start Tracking", key=f"start_{hike['id']}", width="stretch"):
                     success, result = start_hike(hike['id'])
                     if success:
                         st.success(f"✅ Started tracking {hike['name']}!")

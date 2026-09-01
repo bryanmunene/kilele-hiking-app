@@ -6,7 +6,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import init_database
-from services import create_hike, get_all_hikes
+from services import create_hike as create_hike_record, get_all_hikes
 from nature_theme import apply_nature_theme
 
 # Initialize database
@@ -37,10 +37,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-def create_hike(hike_data):
+def save_hike(hike_data):
     """Create a new hike via database"""
     try:
-        result = create_hike(hike_data)
+        result = create_hike_record(hike_data)
         return True, result
     except Exception as e:
         return False, str(e)
@@ -98,7 +98,7 @@ def main():
         st.markdown("---")
         col_submit, col_cancel = st.columns([1, 4])
         with col_submit:
-            submitted = st.form_submit_button("✅ Add Trail", use_container_width=True, type="primary")
+            submitted = st.form_submit_button("✅ Add Trail", width="stretch", type="primary")
         
         if submitted:
             # Validation
@@ -123,7 +123,7 @@ def main():
                 
                 # Submit to API
                 with st.spinner("Adding trail..."):
-                    success, result = create_hike(hike_data)
+                    success, result = save_hike(hike_data)
                 
                 if success:
                     st.success(f"✅ Successfully added trail: **{name}**!")

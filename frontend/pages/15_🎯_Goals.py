@@ -1,18 +1,21 @@
 import streamlit as st
 from datetime import datetime, timedelta
+from auth import is_authenticated, get_current_user, restore_session_from_storage
 from services import create_goal, get_user_goals, update_goal_progress
 from nature_theme import apply_nature_theme
 
 st.set_page_config(page_title="Goals - Kilele Explorers", page_icon="🎯", layout="wide")
 apply_nature_theme()
+restore_session_from_storage()
 
 # Check if user is logged in
-if 'user' not in st.session_state:
+if not is_authenticated():
     st.warning("⚠️ Please log in to view your goals")
-    st.page_link("pages/3_🔐_Login.py", label="Go to Login", icon="🔐")
+    if st.button("Go to Login"):
+        st.switch_page("pages/0_🔐_Login.py")
     st.stop()
 
-user = st.session_state.user
+user = get_current_user()
 
 # Page header
 st.title("🎯 Hiking Goals")

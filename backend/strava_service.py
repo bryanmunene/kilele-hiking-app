@@ -7,7 +7,10 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 import os
 import requests
-from stravalib import Client
+try:
+    from stravalib import Client
+except ImportError:
+    Client = None
 from sqlalchemy.orm import Session
 from models.strava import StravaToken, StravaActivity
 from models.hike_session import HikeSession
@@ -21,17 +24,25 @@ class StravaService:
         self.client_id = os.getenv("STRAVA_CLIENT_ID")
         self.client_secret = os.getenv("STRAVA_CLIENT_SECRET")
         self.redirect_uri = os.getenv("STRAVA_REDIRECT_URI", "http://localhost:8501/strava/callback")
-        self.is_configured = bool(self.client_id and self.client_secret)
+        self.is_available = Client is not None
+        self.is_configured = self.is_available and bool(self.client_id and self.client_secret)
         
+        if not self.is_available:
+            print("⚠️ WARNING: stravalib is not installed - Strava integration disabled")
         if not self.is_configured:
             print("⚠️ WARNING: STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET not set - Strava integration disabled")
+
+    def _client(self, **kwargs):
+        if Client is None:
+            raise ValueError("Strava integration package is not installed. Install backend requirements to enable Strava.")
+        return Client(**kwargs)
     
     def get_authorization_url(self, state: str = None) -> str:
         """Generate OAuth authorization URL"""
         if not self.is_configured:
             raise ValueError("Strava API credentials not configured. Please set STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET environment variables.")
         
-        client = Client()
+        client = self._client()
         # Request read_all permission to access detailed activity data
         url = client.authorization_url(
             client_id=self.client_id,
@@ -43,7 +54,7 @@ class StravaService:
     
     def exchange_code_for_token(self, code: str, db: Session, user_id: int) -> StravaToken:
         """Exchange authorization code for access token"""
-        client = Client()
+        client = self._client()
         
         # Exchange code for token
         token_response = client.exchange_code_for_token(
@@ -84,7 +95,7 @@ class StravaService:
     
     def refresh_access_token(self, token: StravaToken, db: Session) -> StravaToken:
         """Refresh expired access token"""
-        client = Client()
+        client = self._client()
         
         refresh_response = client.refresh_access_token(
             client_id=self.client_id,
@@ -119,7 +130,7 @@ class StravaService:
         if not token:
             raise ValueError("User not connected to Strava")
         
-        client = Client(access_token=token.access_token)
+        client = self._client(access_token=token.access_token)
         
         # Default to last 30 days if no after date
         if not after:
@@ -251,7 +262,7 @@ class StravaService:
         
         # Revoke token with Strava
         try:
-            client = Client()
+            client = self._client()
             client.deauthorize()
         except:
             pass  # Continue even if revocation fails

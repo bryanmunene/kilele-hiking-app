@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime
+from auth import is_authenticated, get_current_user, restore_session_from_storage
 from services import (
     get_all_hikes, 
     add_trail_condition, 
@@ -11,14 +12,16 @@ from nature_theme import apply_nature_theme
 
 st.set_page_config(page_title="Trail Info - Kilele Explorers", page_icon="🌤️", layout="wide")
 apply_nature_theme()
+restore_session_from_storage()
 
 # Check if user is logged in
-if 'user' not in st.session_state:
+if not is_authenticated():
     st.warning("⚠️ Please log in to report trail conditions or add equipment")
-    st.page_link("pages/3_🔐_Login.py", label="Go to Login", icon="🔐")
+    if st.button("Go to Login"):
+        st.switch_page("pages/0_🔐_Login.py")
     st.stop()
 
-user = st.session_state.user
+user = get_current_user()
 
 # Page header
 st.title("🌤️ Trail Conditions & Equipment")
@@ -124,7 +127,7 @@ if selected_trail:
                     help="Required - Share helpful details"
                 )
                 
-                submit = st.form_submit_button("Submit Report", type="primary", use_container_width=True)
+                submit = st.form_submit_button("Submit Report", type="primary", width="stretch")
                 
                 if submit:
                     if not notes:
@@ -214,7 +217,7 @@ if selected_trail:
                         placeholder="Additional details about this item"
                     )
                     
-                    submit = st.form_submit_button("Add Item", type="primary", use_container_width=True)
+                    submit = st.form_submit_button("Add Item", type="primary", width="stretch")
                     
                     if submit:
                         if not item_name:

@@ -170,7 +170,7 @@ def main():
                 'Extreme': '#9c27b0'
             }
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     
     with col_chart2:
         fig2 = px.scatter(
@@ -190,7 +190,7 @@ def main():
                 'Extreme': '#9c27b0'
             }
         )
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width="stretch")
     
     # Footer
     st.markdown("---")
