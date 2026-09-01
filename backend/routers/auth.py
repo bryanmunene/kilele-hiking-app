@@ -17,6 +17,7 @@ from schemas.two_fa import (
     TwoFALoginRequest, TwoFADisableRequest
 )
 from auth import get_password_hash, verify_password, create_access_token, get_current_active_user
+from cloudinary_service import cloudinary_service
 
 router = APIRouter()
 
@@ -123,17 +124,21 @@ async def upload_profile_picture(
     
     # Generate unique filename
     unique_filename = f"{current_user.username}_{uuid.uuid4()}{file_extension}"
-    file_path = Path("static/profile_pictures") / unique_filename
-    
-    # Ensure directory exists
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Save file
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
+
+    profile_url = None
+    if cloudinary_service.enabled:
+        profile_url = cloudinary_service.upload_profile_picture(file.file, current_user.id)
+
+    if not profile_url:
+        file_path = Path("static/profile_pictures") / unique_filename
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file.file.seek(0)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        profile_url = f"/static/profile_pictures/{unique_filename}"
+
     # Update user profile
-    current_user.profile_picture = f"/static/profile_pictures/{unique_filename}"
+    current_user.profile_picture = profile_url
     db.commit()
     db.refresh(current_user)
     

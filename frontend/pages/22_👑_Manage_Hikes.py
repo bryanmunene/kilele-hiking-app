@@ -17,6 +17,7 @@ from services import (
 )
 from database import get_db
 from models import PlannedHike, Hike
+from cloudinary_service import cloudinary_service
 from nature_theme import apply_nature_theme
 
 # Page config
@@ -625,18 +626,34 @@ with tab2:
                                 from pathlib import Path
                                 
                                 image_hash = hashlib.md5(uploaded_image.getvalue()).hexdigest()[:10]
-                                file_extension = uploaded_image.name.split('.')[-1]
-                                filename = f"hike_{image_hash}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
-                                
-                                static_dir = Path(__file__).parent.parent / "static" / "hikes"
-                                static_dir.mkdir(parents=True, exist_ok=True)
-                                image_path = static_dir / filename
-                                
-                                with open(image_path, "wb") as f:
-                                    f.write(uploaded_image.getvalue())
-                                
-                                image_url = f"/static/hikes/{filename}"
-                                st.success(f"✅ Image uploaded: {filename}")
+                                if cloudinary_service.enabled:
+                                    image_url = cloudinary_service.upload_image(
+                                        uploaded_image,
+                                        folder="kilele/planned-hikes",
+                                        public_id=f"planned_hike_{image_hash}",
+                                        transformation={
+                                            "width": 1200,
+                                            "height": 800,
+                                            "crop": "fill",
+                                            "quality": "auto:good",
+                                            "fetch_format": "auto",
+                                        },
+                                    )
+
+                                if not image_url:
+                                    file_extension = uploaded_image.name.split('.')[-1]
+                                    filename = f"hike_{image_hash}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
+
+                                    static_dir = Path(__file__).parent.parent / "static" / "hikes"
+                                    static_dir.mkdir(parents=True, exist_ok=True)
+                                    image_path = static_dir / filename
+
+                                    with open(image_path, "wb") as f:
+                                        f.write(uploaded_image.getvalue())
+
+                                    image_url = f"/static/hikes/{filename}"
+
+                                st.success("✅ Image uploaded")
                             
                             # If custom hike, create trail entry first
                             if not use_existing:

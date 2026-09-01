@@ -22,6 +22,7 @@ from schemas.social import (
     UserStatistics
 )
 from auth import get_current_active_user
+from cloudinary_service import cloudinary_service
 
 router = APIRouter()
 
@@ -143,19 +144,25 @@ async def upload_review_photo(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
     
-    # Save file
     file_extension = Path(file.filename).suffix
     unique_filename = f"review_{review_id}_{uuid.uuid4()}{file_extension}"
-    file_path = Path("static/review_photos") / unique_filename
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+
+    photo_url = None
+    if cloudinary_service.enabled:
+        photo_url = cloudinary_service.upload_review_photo(file.file, review_id)
+
+    if not photo_url:
+        file_path = Path("static/review_photos") / unique_filename
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file.file.seek(0)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        photo_url = f"/static/review_photos/{unique_filename}"
     
     # Create photo record
     photo = ReviewPhoto(
         review_id=review_id,
-        photo_url=f"/static/review_photos/{unique_filename}",
+        photo_url=photo_url,
         caption=caption
     )
     db.add(photo)

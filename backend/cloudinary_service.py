@@ -2,18 +2,21 @@
 Cloudinary image storage service for Kilele
 Handles profile pictures, trail images, and review photos
 """
-import cloudinary
-import cloudinary.uploader
-import cloudinary.api
 from typing import Optional, Dict
-import os
-from io import BytesIO
+
+try:
+    import cloudinary
+    import cloudinary.uploader
+    import cloudinary.api
+    import cloudinary.utils
+except ImportError:
+    cloudinary = None
 
 try:
     from config import settings
     
     # Configure Cloudinary if credentials available
-    if settings.has_cloudinary:
+    if cloudinary and settings.has_cloudinary:
         cloudinary.config(
             cloud_name=settings.CLOUDINARY_CLOUD_NAME,
             api_key=settings.CLOUDINARY_API_KEY,
@@ -33,7 +36,7 @@ class CloudinaryService:
         """Check if Cloudinary is properly configured"""
         try:
             from config import settings
-            return settings.has_cloudinary
+            return bool(cloudinary and settings.has_cloudinary)
         except:
             return False
     
@@ -57,7 +60,7 @@ class CloudinaryService:
             Dict with 'url' and 'public_id' or None if upload fails
         """
         if not self.enabled:
-            print("⚠️ Cloudinary not configured, skipping upload")
+            print("Cloudinary not configured, skipping upload")
             return None
         
         try:
@@ -92,7 +95,7 @@ class CloudinaryService:
             }
             
         except Exception as e:
-            print(f"❌ Cloudinary upload error: {e}")
+            print(f"Cloudinary upload error: {e}")
             return None
     
     def upload_profile_picture(self, file_data, user_id: int) -> Optional[str]:
@@ -170,7 +173,7 @@ class CloudinaryService:
             result = cloudinary.uploader.destroy(public_id)
             return result.get('result') == 'ok'
         except Exception as e:
-            print(f"❌ Cloudinary delete error: {e}")
+            print(f"Cloudinary delete error: {e}")
             return False
     
     def get_image_url(
@@ -202,7 +205,7 @@ class CloudinaryService:
             else:
                 return cloudinary.CloudinaryImage(public_id).build_url(secure=True)
         except Exception as e:
-            print(f"❌ Error getting Cloudinary URL: {e}")
+            print(f"Error getting Cloudinary URL: {e}")
             return None
     
     def get_thumbnail_url(self, public_id: str, size: int = 150) -> Optional[str]:

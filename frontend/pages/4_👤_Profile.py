@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import init_database
 from services import get_user_profile, get_user_stats, get_user_sessions, get_user_bookmarks, delete_bookmark, get_user_sessions, update_user_profile
 from auth import is_authenticated, get_current_user
+from cloudinary_service import cloudinary_service
 from nature_theme import apply_nature_theme
 
 # Initialize database
@@ -59,7 +60,10 @@ col1, col2 = st.columns([1, 3])
 with col1:
     st.subheader("Profile Picture")
     # Display current profile picture
-    if user.get('profile_picture') and os.path.exists(user['profile_picture']):
+    profile_picture = user.get('profile_picture')
+    if profile_picture and profile_picture.startswith(("http://", "https://")):
+        st.image(profile_picture, width=200)
+    elif profile_picture and os.path.exists(profile_picture):
         st.image(user['profile_picture'], width=200)
     else:
         # Default placeholder
@@ -69,22 +73,24 @@ with col1:
     if uploaded_file:
         if st.button("💾 Save Profile Picture"):
             try:
-                # Create profiles directory if it doesn't exist
-                profiles_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'profiles')
-                os.makedirs(profiles_dir, exist_ok=True)
-                
-                # Generate unique filename
-                file_extension = uploaded_file.name.split('.')[-1]
-                filename = f"profile_{user['id']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
-                filepath = os.path.join(profiles_dir, filename)
-                
-                # Save the uploaded file
-                with open(filepath, 'wb') as f:
-                    f.write(uploaded_file.getbuffer())
-                
-                # Update user profile with relative path
-                relative_path = os.path.join('static', 'profiles', filename)
-                update_user_profile(user['id'], {'profile_picture': relative_path})
+                profile_url = None
+                if cloudinary_service.enabled:
+                    profile_url = cloudinary_service.upload_profile_picture(uploaded_file, user['id'])
+
+                if not profile_url:
+                    profiles_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'profiles')
+                    os.makedirs(profiles_dir, exist_ok=True)
+
+                    file_extension = uploaded_file.name.split('.')[-1]
+                    filename = f"profile_{user['id']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
+                    filepath = os.path.join(profiles_dir, filename)
+
+                    with open(filepath, 'wb') as f:
+                        f.write(uploaded_file.getbuffer())
+
+                    profile_url = os.path.join('static', 'profiles', filename)
+
+                update_user_profile(user['id'], {'profile_picture': profile_url})
                 
                 st.success("✅ Profile picture uploaded successfully!")
                 st.rerun()

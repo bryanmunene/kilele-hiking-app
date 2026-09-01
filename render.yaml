@@ -1,0 +1,30 @@
+# Render Blueprint for the free backend web service.
+# Use Neon Free Postgres for DATABASE_URL instead of Render Free Postgres,
+# because Render's free database tier expires after 30 days.
+
+services:
+  - type: web
+    name: kilele-hiking-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: API_BASE_URL
+        value: https://kilele-hiking-api.onrender.com
+      - key: CORS_ORIGINS
+        value: https://kilele-hiking-app.streamlit.app
+      - key: STRAVA_WEBHOOK_VERIFY_TOKEN
+        generateValue: true

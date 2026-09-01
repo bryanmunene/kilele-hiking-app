@@ -2,15 +2,20 @@
 Cloudinary image storage service for Kilele frontend
 Handles profile pictures, trail images, and review photos
 """
-import cloudinary
-import cloudinary.uploader
 from typing import Optional, Dict
+
+try:
+    import cloudinary
+    import cloudinary.uploader
+    import cloudinary.utils
+except ImportError:
+    cloudinary = None
 
 try:
     from config import settings
     
     # Configure Cloudinary if credentials available
-    if settings.has_cloudinary:
+    if cloudinary and settings.has_cloudinary:
         cloudinary.config(
             cloud_name=settings.CLOUDINARY_CLOUD_NAME,
             api_key=settings.CLOUDINARY_API_KEY,
@@ -30,7 +35,7 @@ class CloudinaryService:
         """Check if Cloudinary is properly configured"""
         try:
             from config import settings
-            return settings.has_cloudinary
+            return bool(cloudinary and settings.has_cloudinary)
         except:
             return False
     
@@ -81,7 +86,7 @@ class CloudinaryService:
             return result['secure_url']
             
         except Exception as e:
-            print(f"❌ Cloudinary upload error: {e}")
+            print(f"Cloudinary upload error: {e}")
             return None
     
     def upload_profile_picture(self, file_data, user_id: int) -> Optional[str]:
@@ -139,6 +144,8 @@ class CloudinaryService:
             return url
         
         try:
+            if cloudinary is None:
+                return url
             # Extract public_id from URL
             parts = url.split('/')
             upload_index = parts.index('upload')

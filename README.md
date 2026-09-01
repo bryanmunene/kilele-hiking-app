@@ -46,6 +46,8 @@ Strava, Sentry, Cloudinary, email, and wearable imports are optional integration
 
 ## Deployment Readiness
 
+For zero-cost hosting, use the chosen path in [FREE_DEPLOYMENT.md](FREE_DEPLOYMENT.md): Streamlit Community Cloud, Render Free Web Service, Neon Free Postgres, and optional Cloudinary Free for uploaded images.
+
 The deployable shape is two Python services sharing one persistent PostgreSQL database:
 
 ```text
