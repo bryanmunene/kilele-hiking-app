@@ -52,3 +52,5 @@ backend/static/review_photos/*
 dist/
 build/
 *.egg-info/
+node_modules/
+.neon
