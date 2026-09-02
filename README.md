@@ -81,12 +81,16 @@ python -m compileall backend frontend tests
 python -m unittest discover -s tests -v
 ```
 
-## Default Seed Users
+## Admin Access
 
-The Streamlit seed script creates:
+The seed script no longer creates public default users. Register through the app,
+then grant admin privileges explicitly from a trusted environment:
 
-```text
-admin / admin123
-Nesh / password123
-demo / demo123
+```bash
+cd frontend
+python make_admin.py your-username-or-email
 ```
+
+For first-run automation, you can temporarily set `INITIAL_ADMIN_USERNAME`,
+`INITIAL_ADMIN_EMAIL`, and `INITIAL_ADMIN_PASSWORD` before running the seed
+script, then remove those secrets after the account is created.

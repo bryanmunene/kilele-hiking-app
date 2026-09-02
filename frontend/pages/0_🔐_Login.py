@@ -97,7 +97,7 @@ def login(username, password, two_fa_token=None, remember_me=True):
         st.session_state.user = user
         st.session_state.session_token = session_token  # Save token for persistent login
         
-        # Save token to browser localStorage (keeps Nesh logged in on refresh)
+        # Save token to browser localStorage for persistent login.
         save_token_to_browser(session_token)
         
         return True, "Login successful!"

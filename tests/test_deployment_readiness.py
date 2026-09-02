@@ -44,3 +44,16 @@ class DeploymentReadinessTests(unittest.TestCase):
         self.assertIn("healthCheckPath: /health", blueprint)
         self.assertIn("DATABASE_URL", blueprint)
         self.assertIn("sync: false", blueprint)
+
+    def test_production_build_does_not_publish_default_credentials(self):
+        forbidden = ["admin123", "password123", "demo123", "Nesh always", "permanent session"]
+        scan_roots = [ROOT / "README.md", ROOT / "frontend", ROOT / "backend"]
+        for root in scan_roots:
+            paths = [root] if root.is_file() else root.rglob("*")
+            for path in paths:
+                if not path.is_file() or path.suffix.lower() not in {".py", ".md", ".example"}:
+                    continue
+                content = path.read_text(encoding="utf-8", errors="ignore")
+                for needle in forbidden:
+                    with self.subTest(path=path, needle=needle):
+                        self.assertNotIn(needle, content)

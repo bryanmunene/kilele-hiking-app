@@ -1,6 +1,8 @@
 """
 Quick script to grant admin privileges to a user
 """
+import argparse
+
 from database import get_db
 from models import User
 
@@ -25,6 +27,7 @@ def make_admin(username_or_email: str):
         return True
 
 if __name__ == "__main__":
-    # Make Nesh an admin
-    make_admin("Nesh")
-    make_admin("bryankinesh@gmail.com")
+    parser = argparse.ArgumentParser(description="Grant admin privileges to an existing Kilele user.")
+    parser.add_argument("username_or_email", help="Username or email for the user to promote.")
+    args = parser.parse_args()
+    make_admin(args.username_or_email)

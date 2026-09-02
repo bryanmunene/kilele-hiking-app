@@ -1,7 +1,7 @@
 """
 Authentication module for Streamlit app
 Simplified auth using session state with persistent tokens
-Persists Nesh's login across browser refreshes using localStorage
+Persists login across browser refreshes using localStorage
 """
 import streamlit as st
 import streamlit.components.v1 as components
@@ -25,16 +25,7 @@ def create_session_token(user_id: int, remember_me: bool = True) -> str:
     with get_db() as db:
         # Generate secure random token
         token = secrets.token_urlsafe(32)
-        
-        # Check if user is Nesh - give permanent session
-        user = db.query(User).filter(User.id == user_id).first()
-        is_nesh = user and user.username == "Nesh"
-        
-        # Set expiration (permanent for Nesh, 30 days for remember me, 1 day otherwise)
-        if is_nesh:
-            expires_at = datetime.utcnow() + timedelta(days=3650)  # 10 years (effectively permanent)
-        else:
-            expires_at = datetime.utcnow() + timedelta(days=30 if remember_me else 1)
+        expires_at = datetime.utcnow() + timedelta(days=30 if remember_me else 1)
         
         # Save token to database
         session_token = SessionToken(
@@ -66,16 +57,13 @@ def get_user_by_token(token: str) -> dict:
         if not user:
             return None
         
-        # Ensure Nesh is always admin
-        is_admin = user.is_admin or (user.username == "Nesh")
-        
         return {
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "full_name": user.full_name,
             "profile_picture": user.profile_picture,
-            "is_admin": is_admin,
+            "is_admin": user.is_admin,
             "two_factor_enabled": user.two_factor_enabled,
             "two_factor_secret": user.two_factor_secret,
             "created_at": user.created_at.isoformat() if user.created_at else None
@@ -100,16 +88,13 @@ def authenticate_user(username: str, password: str) -> dict:
         if not verify_password(password, user.hashed_password):
             return None
         
-        # Ensure Nesh is always admin
-        is_admin = user.is_admin or (user.username == "Nesh")
-        
         return {
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "full_name": user.full_name,
             "profile_picture": user.profile_picture,
-            "is_admin": is_admin,
+            "is_admin": user.is_admin,
             "two_factor_enabled": user.two_factor_enabled,
             "two_factor_secret": user.two_factor_secret,
             "created_at": user.created_at.isoformat() if user.created_at else None
@@ -265,7 +250,6 @@ def save_token_to_browser(token: str):
 def restore_session_from_storage():
     """
     Restore session from browser localStorage on page load
-    Keeps Nesh logged in across page refreshes
     """
     try:
         # Only try to restore if not already authenticated

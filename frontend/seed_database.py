@@ -1,15 +1,48 @@
 """
-Seed script for the unified Streamlit database
-Run this once to populate the database with initial data
+Seed script for the unified Streamlit database.
+Run this once to populate the shared trail catalogue.
 """
+import os
 import sys
 from database import init_database, get_db
 from models import Hike, User, Equipment
 from auth import hash_password
 from datetime import datetime
+from config import settings
+
+
+def _truthy_env(name: str) -> bool:
+    return os.getenv(name, "").lower() in {"1", "true", "yes", "on"}
+
+
+def seed_initial_admin(db):
+    """Create an initial admin only when explicit credentials are provided."""
+    username = os.getenv("INITIAL_ADMIN_USERNAME")
+    email = os.getenv("INITIAL_ADMIN_EMAIL")
+    password = os.getenv("INITIAL_ADMIN_PASSWORD")
+
+    if not all([username, email, password]):
+        print("INFO: No INITIAL_ADMIN_* credentials set. Skipping initial admin creation.")
+        return
+
+    existing = db.query(User).filter((User.username == username) | (User.email == email)).first()
+    if existing:
+        print("INFO: Initial admin user already exists. Skipping admin creation.")
+        return
+
+    db.add(
+        User(
+            username=username,
+            email=email,
+            hashed_password=hash_password(password),
+            full_name=os.getenv("INITIAL_ADMIN_FULL_NAME", username),
+            is_admin=True,
+        )
+    )
+    print("INFO: Created initial admin user from explicit environment credentials.")
 
 def seed_database():
-    """Seed the database with initial hiking trails and test users"""
+    """Seed the database with initial hiking trails and catalogue data."""
     
     print("🌱 Starting database seeding...")
     
@@ -129,32 +162,13 @@ def seed_database():
         db.add_all(hikes)
         print(f"✅ Added {len(hikes)} hiking trails")
         
-        # Create test users (optional)
-        test_users = [
-            User(
-                username="admin",
-                email="admin@kilele.ke",
-                hashed_password=hash_password("admin123"),
-                full_name="Admin User",
-                is_admin=True
-            ),
-            User(
-                username="Nesh",
-                email="nesh@kilele.ke",
-                hashed_password=hash_password("password123"),
-                full_name="Nesh",
-                is_admin=True
-            ),
-            User(
-                username="demo",
-                email="demo@kilele.ke",
-                hashed_password=hash_password("demo123"),
-                full_name="Demo Hiker"
-            )
-        ]
-        
-        db.add_all(test_users)
-        print(f"✅ Added {len(test_users)} test users")
+        if settings.is_production and _truthy_env("SEED_TEST_USERS"):
+            print("WARNING: SEED_TEST_USERS is ignored in production.")
+
+        if settings.is_production:
+            seed_initial_admin(db)
+        else:
+            print("INFO: Skipping default users. Register in the app or set INITIAL_ADMIN_* explicitly.")
         
         # Seed hiking gear catalog
         gear_items = [
@@ -269,10 +283,6 @@ def seed_database():
         print(f"✅ Added {len(gear_items)} gear items to catalog")
         
         print("\n🎉 Database seeding completed successfully!")
-        print("\n📝 Test Accounts:")
-        print("   Admin: username='admin', password='admin123'")
-        print("   Nesh:  username='Nesh', password='password123' (ADMIN)")
-        print("   Demo:  username='demo', password='demo123'")
 
 if __name__ == "__main__":
     seed_database()
