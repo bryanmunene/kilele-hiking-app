@@ -3,7 +3,7 @@ import requests
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from auth import is_authenticated, get_current_user
+from auth import is_authenticated, get_current_user, restore_session_from_storage
 from config import settings
 from nature_theme import apply_nature_theme
 import pandas as pd
@@ -11,6 +11,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Strava Connect - Kilele", page_icon="🟠", layout="wide")
 apply_nature_theme()
+restore_session_from_storage()
 
 # Check authentication
 if not is_authenticated():
