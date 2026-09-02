@@ -1,6 +1,8 @@
 """
 Hiking Gear Catalog - Browse and discover essential hiking equipment with prices
 """
+import csv
+import io
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -10,6 +12,24 @@ from auth import is_authenticated, get_current_user, restore_session_from_storag
 from services import get_all_gear, get_gear_categories
 from nature_theme import apply_nature_theme
 from image_utils import display_image
+
+
+def build_shopping_list_csv(items):
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Item", "Category", "Brand", "Vendor", "Required", "Estimated Price (KES)", "Notes"])
+    for item in items:
+        writer.writerow([
+            item.get("item_name", ""),
+            item.get("category", ""),
+            item.get("brand", ""),
+            item.get("vendor", ""),
+            "Yes" if item.get("is_required") else "No",
+            item.get("price") or "",
+            item.get("notes", ""),
+        ])
+    return output.getvalue()
+
 
 st.set_page_config(page_title="Hiking Gear Catalog", page_icon="🎒", layout="wide")
 apply_nature_theme()
@@ -252,8 +272,70 @@ critical for day hikes.
 if is_authenticated():
     st.markdown("---")
     st.subheader("📋 My Shopping List")
-    
-    if 'shopping_list' not in st.session_state:
-        st.session_state.shopping_list = []
-    
-    st.write("Coming soon: Create and save your custom shopping list!")
+
+    available_ids = [gear["id"] for gear in filtered_gear]
+    gear_by_id = {gear["id"]: gear for gear in filtered_gear}
+
+    if "shopping_list_selection" not in st.session_state:
+        st.session_state.shopping_list_selection = [
+            gear["id"] for gear in filtered_gear if gear["is_required"]
+        ]
+
+    st.session_state.shopping_list_selection = [
+        gear_id
+        for gear_id in st.session_state.shopping_list_selection
+        if gear_id in gear_by_id
+    ]
+
+    action_col1, action_col2, action_col3 = st.columns(3)
+    with action_col1:
+        if st.button("Use essentials", disabled=not filtered_gear):
+            st.session_state.shopping_list_selection = [
+                gear["id"] for gear in filtered_gear if gear["is_required"]
+            ]
+    with action_col2:
+        if st.button("Add all filtered", disabled=not filtered_gear):
+            st.session_state.shopping_list_selection = available_ids
+    with action_col3:
+        if st.button("Clear list", disabled=not st.session_state.shopping_list_selection):
+            st.session_state.shopping_list_selection = []
+
+    selected_ids = st.multiselect(
+        "Selected gear",
+        options=available_ids,
+        key="shopping_list_selection",
+        format_func=lambda gear_id: gear_by_id[gear_id]["item_name"],
+        disabled=not filtered_gear,
+    )
+    selected_items = [gear_by_id[gear_id] for gear_id in selected_ids if gear_id in gear_by_id]
+    selected_total = sum(item["price"] or 0 for item in selected_items)
+
+    metric_col1, metric_col2 = st.columns(2)
+    with metric_col1:
+        st.metric("List Items", len(selected_items))
+    with metric_col2:
+        st.metric("Estimated Cost", f"KES {selected_total:,.0f}")
+
+    if selected_items:
+        st.dataframe(
+            [
+                {
+                    "Item": item["item_name"],
+                    "Category": item["category"],
+                    "Required": "Yes" if item["is_required"] else "No",
+                    "Price": f"KES {item['price']:,.0f}" if item["price"] else "TBD",
+                    "Vendor": item["vendor"] or "",
+                }
+                for item in selected_items
+            ],
+            width="stretch",
+            hide_index=True,
+        )
+        st.download_button(
+            "Download CSV",
+            data=build_shopping_list_csv(selected_items),
+            file_name="kilele-shopping-list.csv",
+            mime="text/csv",
+        )
+    else:
+        st.info("Select gear above to build a shopping list.")

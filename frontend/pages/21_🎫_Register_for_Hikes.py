@@ -12,7 +12,11 @@ from auth import is_authenticated, get_current_user, restore_session_from_storag
 from services import get_all_hikes, get_user_planned_hikes, register_for_hike, create_payment, update_payment_status, get_user_registrations
 from image_utils import display_image
 from nature_theme import apply_nature_theme
-from mpesa_service import initiate_stk_push, format_phone_number_display, validate_mpesa_amount
+from mpesa_service import (
+    format_phone_number_display,
+    initiate_stk_push,
+    is_mpesa_configured,
+)
 
 # Page config
 st.set_page_config(
@@ -31,6 +35,7 @@ if not is_authenticated():
     st.stop()
 
 user = get_current_user()
+mpesa_configured = is_mpesa_configured()
 
 st.title("🎫 Register for Upcoming Hikes")
 st.markdown("Browse and register for organized group hikes. Pay securely via M-Pesa.")
@@ -166,9 +171,20 @@ with tab1:
                     st.progress(availability_pct / 100)
                     
                     # Registration button
-                    if st.button(f"Register Now", key=f"register_{hike['id']}", type="primary"):
+                    paid_checkout_unavailable = hike["price"] > 0 and not mpesa_configured
+                    if st.button(
+                        "Register Now",
+                        key=f"register_{hike['id']}",
+                        type="primary",
+                        disabled=paid_checkout_unavailable,
+                        help="M-Pesa checkout must be configured before paid hikes can be booked online."
+                        if paid_checkout_unavailable
+                        else None,
+                    ):
                         st.session_state[f'registering_{hike["id"]}'] = True
                         st.rerun()
+                    if paid_checkout_unavailable:
+                        st.caption("Paid checkout is temporarily unavailable.")
                 else:
                     st.markdown("<p style='color: #ff6b6b; font-weight: 600;'>❌ Fully Booked</p>", unsafe_allow_html=True)
             
@@ -201,6 +217,8 @@ with tab1:
                             st.error("Please agree to the terms and conditions")
                         elif hike['price'] > 0 and not phone:
                             st.error("Please enter your M-Pesa phone number")
+                        elif hike['price'] > 0 and not mpesa_configured:
+                            st.error("M-Pesa payments are not configured yet, so this paid hike cannot be booked online.")
                         else:
                             # Create registration
                             result = register_for_hike(
@@ -234,17 +252,7 @@ with tab1:
                                                 transaction_desc=f"Registration for {hike['hike_name']}"
                                             )
                                             
-                                            if mpesa_result.get("demo_mode"):
-                                                st.warning("⚠️ **Demo Mode**: M-Pesa not configured")
-                                                st.info("In production, you would receive an M-Pesa prompt on your phone to complete payment.")
-                                                # Mark as paid for demo
-                                                update_payment_status(
-                                                    payment_id=payment_result['payment_id'],
-                                                    status="completed",
-                                                    transaction_id="DEMO123456"
-                                                )
-                                                st.success("✅ Registration successful! (Demo mode - no actual payment)")
-                                            elif mpesa_result.get("success"):
+                                            if mpesa_result.get("success"):
                                                 # Update payment with M-Pesa IDs
                                                 update_payment_status(
                                                     payment_id=payment_result['payment_id'],

@@ -58,6 +58,7 @@ class User(Base):
     achievements = relationship("UserAchievement", back_populates="user")
     followers = relationship("Follow", foreign_keys="Follow.following_id", back_populates="following")
     following = relationship("Follow", foreign_keys="Follow.follower_id", back_populates="follower")
+    conversation_participants = relationship("ConversationParticipant", back_populates="user")
     sent_messages = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
 
 class Review(Base):
@@ -199,6 +200,7 @@ class ConversationParticipant(Base):
     
     # Relationships
     conversation = relationship("Conversation", back_populates="participants")
+    user = relationship("User", back_populates="conversation_participants")
 
 class Message(Base):
     __tablename__ = "messages"

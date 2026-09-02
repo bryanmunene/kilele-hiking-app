@@ -465,9 +465,10 @@ def get_user_conversations(user_id: int) -> List[dict]:
                 {
                     "id": op.user.id,
                     "username": op.user.username,
+                    "full_name": op.user.full_name,
                     "profile_picture": op.user.profile_picture
                 }
-                for op in conv.participants if op.user_id != user_id
+                for op in conv.participants if op.user_id != user_id and op.user
             ]
             
             # Get last message
@@ -475,18 +476,34 @@ def get_user_conversations(user_id: int) -> List[dict]:
                 Message.conversation_id == conv.id
             ).order_by(Message.created_at.desc()).first()
             
+            unread_count = db.query(func.count(Message.id)).filter(
+                Message.conversation_id == conv.id,
+                Message.sender_id != user_id,
+                Message.is_read == False,
+            ).scalar() or 0
+
             conversations.append({
                 "id": conv.id,
                 "created_at": conv.created_at.isoformat() if conv.created_at else None,
+                "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
                 "participants": other_users,
                 "last_message": {
                     "content": last_message.content,
                     "created_at": last_message.created_at.isoformat(),
                     "sender_id": last_message.sender_id
-                } if last_message else None
+                } if last_message else None,
+                "unread_count": unread_count,
             })
         
-        return conversations
+        return sorted(
+            conversations,
+            key=lambda conversation: (
+                conversation["last_message"]["created_at"]
+                if conversation["last_message"]
+                else conversation["updated_at"] or conversation["created_at"] or ""
+            ),
+            reverse=True,
+        )
 
 def get_conversation_messages(conversation_id: int, user_id: int) -> List[dict]:
     """Get all messages in a conversation"""
@@ -499,6 +516,13 @@ def get_conversation_messages(conversation_id: int, user_id: int) -> List[dict]:
         
         if not participant:
             raise ValueError("Not authorized to view this conversation")
+
+        db.query(Message).filter(
+            Message.conversation_id == conversation_id,
+            Message.sender_id != user_id,
+            Message.is_read == False,
+        ).update({"is_read": True})
+        participant.last_read_at = datetime.utcnow()
         
         messages = db.query(Message).filter(
             Message.conversation_id == conversation_id
@@ -509,11 +533,16 @@ def get_conversation_messages(conversation_id: int, user_id: int) -> List[dict]:
             "content": m.content,
             "sender_id": m.sender_id,
             "sender_username": m.sender.username,
+            "is_read": m.is_read,
             "created_at": m.created_at.isoformat() if m.created_at else None
         } for m in messages]
 
 def send_message(sender_id: int, conversation_id: int, content: str) -> dict:
     """Send a message"""
+    content = content.strip()
+    if not content:
+        raise ValueError("Message cannot be empty")
+
     with get_db() as db:
         # Verify sender is participant
         participant = db.query(ConversationParticipant).filter(
@@ -530,19 +559,43 @@ def send_message(sender_id: int, conversation_id: int, content: str) -> dict:
             content=content
         )
         db.add(message)
+
+        conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if conversation:
+            conversation.updated_at = datetime.utcnow()
+
         db.flush()
         
         return {"id": message.id}
 
 def create_conversation(user_ids: List[int]) -> dict:
-    """Create a new conversation"""
+    """Create a conversation, or return the existing one for the same participants."""
+    unique_user_ids = list(dict.fromkeys(user_ids))
+    if len(unique_user_ids) < 2:
+        raise ValueError("A conversation needs at least two users")
+
     with get_db() as db:
+        existing_users = {
+            user.id
+            for user in db.query(User).filter(User.id.in_(unique_user_ids)).all()
+        }
+        missing_user_ids = set(unique_user_ids) - existing_users
+        if missing_user_ids:
+            raise ValueError("One or more selected users do not exist")
+
+        for existing in db.query(Conversation).join(ConversationParticipant).filter(
+            ConversationParticipant.user_id.in_(unique_user_ids)
+        ).all():
+            participant_ids = {participant.user_id for participant in existing.participants}
+            if participant_ids == set(unique_user_ids):
+                return {"id": existing.id}
+
         conversation = Conversation()
         db.add(conversation)
         db.flush()
         
         # Add participants
-        for user_id in user_ids:
+        for user_id in unique_user_ids:
             participant = ConversationParticipant(
                 conversation_id=conversation.id,
                 user_id=user_id
@@ -658,15 +711,24 @@ def get_user_stats(user_id: int) -> dict:
             "hard_hikes": hard_hikes,
         }
 
-def search_users(query: str) -> List[dict]:
+def search_users(query: str, exclude_user_id: int | None = None) -> List[dict]:
     """Search users by username or full name"""
+    query = query.strip()
+    if not query:
+        return []
+
     with get_db() as db:
-        users = db.query(User).filter(
+        users_query = db.query(User).filter(
             or_(
                 User.username.ilike(f"%{query}%"),
                 User.full_name.ilike(f"%{query}%")
-            )
-        ).limit(20).all()
+            ),
+            User.is_active == True,
+        )
+        if exclude_user_id is not None:
+            users_query = users_query.filter(User.id != exclude_user_id)
+
+        users = users_query.order_by(User.username).limit(20).all()
         
         return [{
             "id": u.id,

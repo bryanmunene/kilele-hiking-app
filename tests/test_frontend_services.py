@@ -153,3 +153,36 @@ class FrontendServiceContractTests(unittest.TestCase):
         comments = services.get_trail_comments(hike_id)
         self.assertEqual({comment["id"] for comment in comments}, {parent["id"], reply["id"]})
         self.assertIn("parent_id", comments[0])
+
+    def test_messaging_services_create_reuse_send_and_mark_read(self):
+        user_id, other_user_id, _ = self.seed_users_and_hike()
+
+        conversation = services.create_conversation([user_id, other_user_id, other_user_id])
+        duplicate = services.create_conversation([other_user_id, user_id])
+        self.assertEqual(conversation["id"], duplicate["id"])
+
+        with self.assertRaises(ValueError):
+            services.send_message(user_id, conversation["id"], "   ")
+
+        message = services.send_message(user_id, conversation["id"], "See you on the ridge.")
+        self.assertIn("id", message)
+
+        recipient_conversations = services.get_user_conversations(other_user_id)
+        self.assertEqual(len(recipient_conversations), 1)
+        self.assertEqual(recipient_conversations[0]["unread_count"], 1)
+        self.assertEqual(recipient_conversations[0]["participants"][0]["username"], "Nesh")
+        self.assertEqual(
+            recipient_conversations[0]["last_message"]["content"],
+            "See you on the ridge.",
+        )
+
+        messages = services.get_conversation_messages(conversation["id"], other_user_id)
+        self.assertEqual(messages[0]["sender_username"], "Nesh")
+        self.assertEqual(messages[0]["content"], "See you on the ridge.")
+
+        recipient_conversations = services.get_user_conversations(other_user_id)
+        self.assertEqual(recipient_conversations[0]["unread_count"], 0)
+
+        search_results = services.search_users("nesh", exclude_user_id=other_user_id)
+        self.assertEqual(search_results[0]["username"], "Nesh")
+        self.assertEqual(services.search_users("nesh", exclude_user_id=user_id), [])

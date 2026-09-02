@@ -7,13 +7,25 @@ import base64
 from datetime import datetime
 import os
 
+
+def _get_setting(key: str, default: str = "") -> str:
+    try:
+        import streamlit as st
+
+        if key in st.secrets:
+            return str(st.secrets[key])
+    except Exception:
+        pass
+    return os.getenv(key, default)
+
+
 # M-Pesa API Configuration (Sandbox for testing)
-MPESA_ENVIRONMENT = os.getenv("MPESA_ENVIRONMENT", "sandbox")  # sandbox or production
-MPESA_CONSUMER_KEY = os.getenv("MPESA_CONSUMER_KEY", "")
-MPESA_CONSUMER_SECRET = os.getenv("MPESA_CONSUMER_SECRET", "")
-MPESA_SHORTCODE = os.getenv("MPESA_SHORTCODE", "174379")  # Paybill/Till number
-MPESA_PASSKEY = os.getenv("MPESA_PASSKEY", "")  # Lipa Na M-Pesa Online Passkey
-MPESA_CALLBACK_URL = os.getenv("MPESA_CALLBACK_URL", "https://kilele-hiking-app.streamlit.app/mpesa/callback")
+MPESA_ENVIRONMENT = _get_setting("MPESA_ENVIRONMENT", "sandbox")  # sandbox or production
+MPESA_CONSUMER_KEY = _get_setting("MPESA_CONSUMER_KEY")
+MPESA_CONSUMER_SECRET = _get_setting("MPESA_CONSUMER_SECRET")
+MPESA_SHORTCODE = _get_setting("MPESA_SHORTCODE", "174379")  # Paybill/Till number
+MPESA_PASSKEY = _get_setting("MPESA_PASSKEY")  # Lipa Na M-Pesa Online Passkey
+MPESA_CALLBACK_URL = _get_setting("MPESA_CALLBACK_URL", "https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app/mpesa/callback")
 
 # API URLs
 if MPESA_ENVIRONMENT == "production":
@@ -24,6 +36,11 @@ else:
     AUTH_URL = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
     STK_PUSH_URL = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
     QUERY_URL = "https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query"
+
+
+def is_mpesa_configured() -> bool:
+    """Return whether live M-Pesa checkout can be attempted."""
+    return all([MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_PASSKEY, MPESA_SHORTCODE])
 
 
 def get_mpesa_access_token():
@@ -66,11 +83,10 @@ def initiate_stk_push(phone_number: str, amount: float, account_reference: str, 
         dict: Response with checkout_request_id, merchant_request_id, or error
     """
     # Validate M-Pesa configuration
-    if not all([MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_PASSKEY]):
+    if not is_mpesa_configured():
         return {
             "success": False,
-            "error": "M-Pesa not configured. Using demo mode.",
-            "demo_mode": True
+            "error": "M-Pesa payments are not configured yet."
         }
     
     # Format phone number (remove + and spaces, ensure starts with 254)
