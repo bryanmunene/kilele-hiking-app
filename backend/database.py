@@ -159,9 +159,42 @@ def _add_missing_columns():
                     )
 
 
+def _widen_image_columns():
+    """Allow durable free-tier data URLs in image fields on PostgreSQL."""
+    if engine.dialect.name != "postgresql":
+        return
+
+    targets = {
+        "users": ["profile_picture"],
+        "hikes": ["image_url"],
+    }
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+
+    with engine.begin() as conn:
+        for table_name, column_names in targets.items():
+            if table_name not in existing_tables:
+                continue
+
+            columns = {
+                column["name"]: column
+                for column in inspector.get_columns(table_name)
+            }
+            for column_name in column_names:
+                column = columns.get(column_name)
+                if not column:
+                    continue
+                if column.get("type").__class__.__name__.upper() == "TEXT":
+                    continue
+                conn.exec_driver_sql(
+                    f"ALTER TABLE {table_name} ALTER COLUMN {column_name} TYPE TEXT"
+                )
+
+
 # Initialize database (create tables)
 def init_database():
     """Create all database tables"""
     from models import user, hike, review, achievement, activity, bookmark, follow, hike_session, message, session_token
     Base.metadata.create_all(bind=engine)
     _add_missing_columns()
+    _widen_image_columns()

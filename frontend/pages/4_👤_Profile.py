@@ -3,15 +3,14 @@ import pandas as pd
 import plotly.express as px
 import sys
 import os
-from datetime import datetime
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import init_database
-from services import get_user_profile, get_user_stats, get_user_sessions, get_user_bookmarks, delete_bookmark, get_user_sessions, update_user_profile
+from services import get_user_profile, get_user_stats, get_user_sessions, get_user_bookmarks, delete_bookmark, update_user_profile
 from auth import is_authenticated, get_current_user
-from cloudinary_service import cloudinary_service
+from cloudinary_service import cloudinary_service, uploaded_image_to_data_url
 from nature_theme import apply_nature_theme
 
 # Initialize database
@@ -61,7 +60,7 @@ with col1:
     st.subheader("Profile Picture")
     # Display current profile picture
     profile_picture = user.get('profile_picture')
-    if profile_picture and profile_picture.startswith(("http://", "https://")):
+    if profile_picture and profile_picture.startswith(("http://", "https://", "data:image/")):
         st.image(profile_picture, width=200)
     elif profile_picture and os.path.exists(profile_picture):
         st.image(user['profile_picture'], width=200)
@@ -78,17 +77,16 @@ with col1:
                     profile_url = cloudinary_service.upload_profile_picture(uploaded_file, user['id'])
 
                 if not profile_url:
-                    profiles_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'profiles')
-                    os.makedirs(profiles_dir, exist_ok=True)
+                    profile_url = uploaded_image_to_data_url(
+                        uploaded_file,
+                        max_size=(400, 400),
+                        quality=85,
+                        max_bytes=600_000,
+                    )
 
-                    file_extension = uploaded_file.name.split('.')[-1]
-                    filename = f"profile_{user['id']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
-                    filepath = os.path.join(profiles_dir, filename)
-
-                    with open(filepath, 'wb') as f:
-                        f.write(uploaded_file.getbuffer())
-
-                    profile_url = os.path.join('static', 'profiles', filename)
+                if not profile_url:
+                    st.error("❌ Image upload failed. Try a smaller JPG or PNG file.")
+                    st.stop()
 
                 update_user_profile(user['id'], {'profile_picture': profile_url})
                 

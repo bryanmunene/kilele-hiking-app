@@ -36,8 +36,8 @@ def display_image(image_name: str, **kwargs):
     if 'width' not in kwargs:
         kwargs['width'] = 'stretch'
     
-    # Check if it's a URL
-    if image_name.startswith('http'):
+    # Check if it's a remote URL or durable data URL
+    if image_name.startswith(('http://', 'https://', 'data:image/')):
         try:
             st.image(image_name, **kwargs)
         except Exception:

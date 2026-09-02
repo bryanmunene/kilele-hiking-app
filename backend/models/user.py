@@ -14,7 +14,7 @@ class User(Base):
     hashed_password = Column(String(200), nullable=False)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
-    profile_picture = Column(String(255), nullable=True)  # Path to profile picture
+    profile_picture = Column(Text, nullable=True)  # URL or compact data URL
     experience_level = Column(String(50), default="Beginner")
     two_fa_enabled = Column(Boolean, default=False)
     two_fa_secret = Column(String(32), nullable=True)  # Secret for 2FA

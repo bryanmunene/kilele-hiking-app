@@ -2,6 +2,8 @@
 Cloudinary image storage service for Kilele frontend
 Handles profile pictures, trail images, and review photos
 """
+import base64
+import io
 from typing import Optional, Dict
 
 try:
@@ -10,6 +12,11 @@ try:
     import cloudinary.utils
 except ImportError:
     cloudinary = None
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 try:
     from config import settings
@@ -164,6 +171,42 @@ class CloudinaryService:
             return optimized
         except:
             return url
+
+
+def uploaded_image_to_data_url(
+    uploaded_file,
+    *,
+    max_size: tuple[int, int] = (1200, 800),
+    quality: int = 82,
+    max_bytes: int = 1_500_000,
+) -> Optional[str]:
+    """
+    Convert an uploaded image to a compact data URL for free-tier durable storage.
+
+    This is a bounded fallback for deployments without Cloudinary. Large originals
+    are resized and encoded as JPEG so Neon stores only a small display image.
+    """
+    if Image is None:
+        return None
+
+    try:
+        uploaded_file.seek(0)
+        image = Image.open(uploaded_file)
+        image = image.convert("RGB")
+        image.thumbnail(max_size)
+
+        output = io.BytesIO()
+        image.save(output, format="JPEG", quality=quality, optimize=True)
+        data = output.getvalue()
+
+        if len(data) > max_bytes:
+            return None
+
+        encoded = base64.b64encode(data).decode("ascii")
+        return f"data:image/jpeg;base64,{encoded}"
+    except Exception as e:
+        print(f"Data URL image fallback error: {e}")
+        return None
 
 # Global instance
 cloudinary_service = CloudinaryService()

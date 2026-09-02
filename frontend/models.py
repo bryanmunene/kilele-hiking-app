@@ -22,7 +22,7 @@ class Hike(Base):
     best_season = Column(String)
     latitude = Column(Float)
     longitude = Column(Float)
-    image_url = Column(String)
+    image_url = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -40,7 +40,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String)
     bio = Column(Text)
-    profile_picture = Column(String)
+    profile_picture = Column(Text)
     experience_level = Column(String, default="Beginner")
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)

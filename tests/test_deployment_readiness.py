@@ -109,3 +109,17 @@ class DeploymentReadinessTests(unittest.TestCase):
                 sys.modules.pop("streamlit", None)
             else:
                 sys.modules["streamlit"] = original_streamlit
+
+    def test_free_upload_fallback_has_text_image_columns(self):
+        frontend_models = (ROOT / "frontend" / "models.py").read_text(encoding="utf-8")
+        backend_user = (ROOT / "backend" / "models" / "user.py").read_text(encoding="utf-8")
+        backend_hike = (ROOT / "backend" / "models" / "hike.py").read_text(encoding="utf-8")
+        frontend_db = (ROOT / "frontend" / "database.py").read_text(encoding="utf-8")
+        backend_db = (ROOT / "backend" / "database.py").read_text(encoding="utf-8")
+
+        self.assertIn("profile_picture = Column(Text)", frontend_models)
+        self.assertIn("image_url = Column(Text)", frontend_models)
+        self.assertIn("profile_picture = Column(Text", backend_user)
+        self.assertIn("image_url = Column(Text)", backend_hike)
+        self.assertIn("_widen_image_columns()", frontend_db)
+        self.assertIn("_widen_image_columns()", backend_db)

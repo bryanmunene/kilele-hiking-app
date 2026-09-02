@@ -18,7 +18,7 @@ class Hike(Base):
     best_season = Column(String(200))  # e.g., "June-September, December-February"
     latitude = Column(Float)
     longitude = Column(Float)
-    image_url = Column(String(500))
+    image_url = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

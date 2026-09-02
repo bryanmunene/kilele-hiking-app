@@ -17,7 +17,7 @@ from services import (
 )
 from database import get_db
 from models import PlannedHike, Hike
-from cloudinary_service import cloudinary_service
+from cloudinary_service import cloudinary_service, uploaded_image_to_data_url
 from nature_theme import apply_nature_theme
 
 # Page config
@@ -623,7 +623,6 @@ with tab2:
                             image_url = None
                             if uploaded_image is not None:
                                 import hashlib
-                                from pathlib import Path
                                 
                                 image_hash = hashlib.md5(uploaded_image.getvalue()).hexdigest()[:10]
                                 if cloudinary_service.enabled:
@@ -641,17 +640,16 @@ with tab2:
                                     )
 
                                 if not image_url:
-                                    file_extension = uploaded_image.name.split('.')[-1]
-                                    filename = f"hike_{image_hash}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
+                                    image_url = uploaded_image_to_data_url(
+                                        uploaded_image,
+                                        max_size=(1200, 800),
+                                        quality=82,
+                                        max_bytes=1_500_000,
+                                    )
 
-                                    static_dir = Path(__file__).parent.parent / "static" / "hikes"
-                                    static_dir.mkdir(parents=True, exist_ok=True)
-                                    image_path = static_dir / filename
-
-                                    with open(image_path, "wb") as f:
-                                        f.write(uploaded_image.getvalue())
-
-                                    image_url = f"/static/hikes/{filename}"
+                                if not image_url:
+                                    st.error("❌ Image upload failed. Try a smaller JPG or PNG file.")
+                                    st.stop()
 
                                 st.success("✅ Image uploaded")
                             
