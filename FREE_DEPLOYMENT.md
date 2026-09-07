@@ -8,7 +8,7 @@ This is the recommended free-first hosting setup for Kilele.
 Frontend: Streamlit Community Cloud
 Backend:  Render Free Web Service
 Database: Neon Free Postgres
-Images:   Cloudinary Free, optional but recommended for uploads
+Images:   Neon data URL fallback; Cloudinary Free is optional for heavier uploads
 Domain:   Use the free provider subdomains
 ```
 
@@ -16,9 +16,10 @@ This avoids paid domains, paid databases, persistent disks, and server managemen
 
 ## Limits To Accept
 
-- Render Free services sleep after idle time, so the first backend request can take about a minute.
+- Streamlit Community Cloud can hibernate after inactivity. The included keep-awake workflow visits the app on a schedule so routine manual reboots are not needed.
+- Render Free services sleep after idle time, so the first backend request can take about a minute unless you add a more frequent external monitor.
 - Neon Free has a small storage/compute allowance. It is enough for a demo, prototype, and light community use.
-- Cloudinary Free is enough for light image uploads, but heavy media traffic can exceed free credits.
+- Profile and hike image uploads work without paid storage by saving optimized, compact images in Neon. Use Cloudinary Free later if image traffic becomes heavy.
 - This is staging/demo ready, not a high-traffic production architecture.
 
 ## 1. Create Neon Database
@@ -100,15 +101,29 @@ CLOUDINARY_API_KEY = ""
 CLOUDINARY_API_SECRET = ""
 ```
 
-## 4. Optional Cloudinary Free Setup
+## 4. Keep The Free App Awake
 
-Use Cloudinary if users will upload profile pictures or hike images. Without Cloudinary, uploads fall back to local files, which can disappear on free cloud services after restarts or redeploys.
+This repository includes `.github/workflows/keep-awake.yml`, which runs every 6 hours and pings:
+
+```text
+https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app/
+https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app/_stcore/health
+https://kilele-hiking-api.onrender.com/health
+```
+
+That schedule is meant to keep Streamlit from hibernating during normal free-tier use. GitHub scheduled workflows must be enabled for the repository. If GitHub disables scheduled workflows after a long period of repository inactivity, re-enable the workflow once from the Actions tab.
+
+Render Free can still cold-start because it sleeps after a much shorter idle period. This should wake automatically on the next request; it should not require a Streamlit reboot. If you want the backend to stay warm too, add a free UptimeRobot monitor for `https://kilele-hiking-api.onrender.com/health` at a 5-minute interval.
+
+## 5. Optional Cloudinary Free Setup
+
+Use Cloudinary if users will upload many profile pictures or hike images. Without Cloudinary, the app stores optimized small images in Neon so they survive restarts and redeploys.
 
 1. Create a free Cloudinary account.
 2. Copy `cloud_name`, `api_key`, and `api_secret`.
 3. Add them to both Render and Streamlit secrets.
 
-## 5. Smoke Test
+## 6. Smoke Test
 
 After both services are live:
 
@@ -121,4 +136,4 @@ After both services are live:
 
 ## Current Readiness
 
-The codebase is ready for this free staging deployment after secrets are added. It still needs manual live QA for Strava OAuth, M-Pesa, Cloudinary uploads, and admin workflows.
+The codebase is ready for this free staging deployment after secrets are added. Core workflows have automated checks. Strava OAuth, M-Pesa, SMTP/email, Cloudinary, and UptimeRobot are optional external integrations that need their own free-account credentials when you choose to enable them.

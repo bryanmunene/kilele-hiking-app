@@ -13,6 +13,7 @@ class DeploymentReadinessTests(unittest.TestCase):
     def test_container_and_secret_templates_exist(self):
         expected_files = [
             ROOT / ".dockerignore",
+            ROOT / ".github" / "workflows" / "keep-awake.yml",
             ROOT / "docker-compose.yml",
             ROOT / "backend" / "Dockerfile",
             ROOT / "frontend" / "Dockerfile",
@@ -123,3 +124,14 @@ class DeploymentReadinessTests(unittest.TestCase):
         self.assertIn("image_url = Column(Text)", backend_hike)
         self.assertIn("_widen_image_columns()", frontend_db)
         self.assertIn("_widen_image_columns()", backend_db)
+
+    def test_keep_awake_workflow_targets_live_free_services(self):
+        workflow = (ROOT / ".github" / "workflows" / "keep-awake.yml").read_text(encoding="utf-8")
+        script = (ROOT / "scripts" / "keep_awake.py").read_text(encoding="utf-8")
+
+        self.assertIn('cron: "17 */6 * * *"', workflow)
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn("scripts/keep_awake.py", workflow)
+        self.assertIn("kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app", workflow)
+        self.assertIn("kilele-hiking-api.onrender.com/health", workflow)
+        self.assertIn("this app has gone to sleep", script)
