@@ -19,7 +19,7 @@ except Exception:
     pass
 
 from database import engine, Base, init_database
-from routers import hikes, auth, user_activity, social, messaging, wearable, strava
+from routers import hikes, auth, user_activity, social, messaging, wearable, strava, payments, recovery, integrations
 from config import settings
 from rate_limiter import RateLimitExceeded, limiter, rate_limit_handler
 
@@ -111,6 +111,9 @@ app.include_router(social.router, prefix="/api/v1/social", tags=["social"])
 app.include_router(messaging.router, tags=["messaging"])
 app.include_router(wearable.router, tags=["wearable"])
 app.include_router(strava.router, tags=["strava"])
+app.include_router(payments.router)
+app.include_router(recovery.router)
+app.include_router(integrations.router)
 
 # Mount static files for images
 STATIC_DIR = Path(__file__).resolve().parent / "static"

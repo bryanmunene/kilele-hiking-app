@@ -3,7 +3,7 @@ Strava OAuth and API integration service
 Handles authentication, activity sync, and webhook events
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict
 import os
 import requests
@@ -16,6 +16,7 @@ from models.strava import StravaToken, StravaActivity
 from models.hike_session import HikeSession
 from models.hike import Hike
 import json
+from config import settings
 
 class StravaService:
     """Service for Strava API integration"""
@@ -23,7 +24,7 @@ class StravaService:
     def __init__(self):
         self.client_id = os.getenv("STRAVA_CLIENT_ID")
         self.client_secret = os.getenv("STRAVA_CLIENT_SECRET")
-        self.redirect_uri = os.getenv("STRAVA_REDIRECT_URI", "http://localhost:8501/strava/callback")
+        self.redirect_uri = os.getenv("STRAVA_REDIRECT_URI") or settings.FRONTEND_URL + "/Strava"
         self.is_available = Client is not None
         self.is_configured = self.is_available and bool(self.client_id and self.client_secret)
         
@@ -43,16 +44,15 @@ class StravaService:
             raise ValueError("Strava API credentials not configured. Please set STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET environment variables.")
         
         client = self._client()
-        # Request read_all permission to access detailed activity data
         url = client.authorization_url(
             client_id=self.client_id,
             redirect_uri=self.redirect_uri,
-            scope=['read_all', 'activity:read_all', 'profile:read_all'],
+            scope=['read', 'activity:read'],
             state=state
         )
         return url
     
-    def exchange_code_for_token(self, code: str, db: Session, user_id: int) -> StravaToken:
+    def exchange_code_for_token(self, code: str, db: Session, user_id: int, scope: str = "") -> StravaToken:
         """Exchange authorization code for access token"""
         client = self._client()
         
@@ -62,6 +62,16 @@ class StravaService:
             client_secret=self.client_secret,
             code=code
         )
+        granted = token_response.get('scope', scope)
+        granted = granted.replace(' ', ',') if isinstance(granted, str) else ','.join(granted)
+        if not {'activity:read', 'activity:read_all'}.intersection(granted.split(',')):
+            raise ValueError("Activity access was not granted. Reconnect and allow activity access.")
+        athlete_id = token_response.get('athlete', {}).get('id')
+        if athlete_id is None:
+            athlete_id = self._client(access_token=token_response['access_token']).get_athlete().id
+        other = db.query(StravaToken).filter(StravaToken.athlete_id == athlete_id, StravaToken.user_id != user_id).first()
+        if other:
+            raise ValueError("This Strava account is already connected to another Kilele account.")
         
         # Check if user already has a token
         existing_token = db.query(StravaToken).filter(StravaToken.user_id == user_id).first()
@@ -70,8 +80,9 @@ class StravaService:
             # Update existing token
             existing_token.access_token = token_response['access_token']
             existing_token.refresh_token = token_response['refresh_token']
-            existing_token.expires_at = datetime.fromtimestamp(token_response['expires_at'])
-            existing_token.athlete_id = token_response['athlete']['id']
+            existing_token.expires_at = datetime.fromtimestamp(token_response['expires_at'], timezone.utc).replace(tzinfo=None)
+            existing_token.athlete_id = athlete_id
+            existing_token.scope = granted
             existing_token.connected_at = datetime.utcnow()
             existing_token.sync_enabled = True
             db.commit()
@@ -82,9 +93,9 @@ class StravaService:
             user_id=user_id,
             access_token=token_response['access_token'],
             refresh_token=token_response['refresh_token'],
-            expires_at=datetime.fromtimestamp(token_response['expires_at']),
-            athlete_id=token_response['athlete']['id'],
-            scope=','.join(token_response.get('scope', []))
+            expires_at=datetime.fromtimestamp(token_response['expires_at'], timezone.utc).replace(tzinfo=None),
+            athlete_id=athlete_id,
+            scope=granted
         )
         
         db.add(token)
@@ -105,7 +116,7 @@ class StravaService:
         
         token.access_token = refresh_response['access_token']
         token.refresh_token = refresh_response['refresh_token']
-        token.expires_at = datetime.fromtimestamp(refresh_response['expires_at'])
+        token.expires_at = datetime.fromtimestamp(refresh_response['expires_at'], timezone.utc).replace(tzinfo=None)
         
         db.commit()
         return token
@@ -143,12 +154,15 @@ class StravaService:
         
         for activity in activities:
             # Only sync hiking/walking activities
-            if activity.type not in ['Hike', 'Walk', 'Trail Run', 'Run']:
+            activity_type = getattr(activity, 'sport_type', None) or activity.type
+            activity_type = str(getattr(activity_type, 'root', activity_type))
+            if activity_type not in ['Hike', 'Walk', 'TrailRun', 'Run']:
                 continue
             
             # Check if activity already exists
             existing = db.query(StravaActivity).filter(
-                StravaActivity.strava_activity_id == str(activity.id)
+                StravaActivity.strava_activity_id == str(activity.id),
+                StravaActivity.user_id == user_id
             ).first()
             
             if existing:
@@ -177,26 +191,33 @@ class StravaService:
     ) -> StravaActivity:
         """Create StravaActivity from Strava API data"""
         
+        def seconds(value):
+            return int(value.total_seconds() if hasattr(value, 'total_seconds') else value or 0)
+
+        def coordinates(value):
+            value = getattr(value, 'root', value)
+            return json.dumps(list(value)) if value else None
+
         activity = StravaActivity(
             token_id=token_id,
             user_id=user_id,
             strava_activity_id=str(strava_activity.id),
             name=strava_activity.name,
-            activity_type=strava_activity.type,
+            activity_type=str(getattr(strava_activity.type, 'root', strava_activity.type)),
             distance=float(strava_activity.distance) if strava_activity.distance else None,
-            moving_time=int(strava_activity.moving_time.total_seconds()) if strava_activity.moving_time else None,
-            elapsed_time=int(strava_activity.elapsed_time.total_seconds()) if strava_activity.elapsed_time else None,
+            moving_time=seconds(strava_activity.moving_time),
+            elapsed_time=seconds(strava_activity.elapsed_time),
             total_elevation_gain=float(strava_activity.total_elevation_gain) if strava_activity.total_elevation_gain else None,
             start_date=strava_activity.start_date,
             start_date_local=strava_activity.start_date_local,
-            start_latlng=json.dumps(strava_activity.start_latlng) if strava_activity.start_latlng else None,
-            end_latlng=json.dumps(strava_activity.end_latlng) if strava_activity.end_latlng else None,
+            start_latlng=coordinates(strava_activity.start_latlng),
+            end_latlng=coordinates(strava_activity.end_latlng),
             map_summary_polyline=strava_activity.map.summary_polyline if strava_activity.map else None,
             average_speed=float(strava_activity.average_speed) if strava_activity.average_speed else None,
             max_speed=float(strava_activity.max_speed) if strava_activity.max_speed else None,
             average_heartrate=float(strava_activity.average_heartrate) if strava_activity.average_heartrate else None,
             max_heartrate=float(strava_activity.max_heartrate) if strava_activity.max_heartrate else None,
-            calories=float(strava_activity.calories) if strava_activity.calories else None,
+            calories=float(getattr(strava_activity, 'calories', 0) or 0),
             achievement_count=int(strava_activity.achievement_count) if strava_activity.achievement_count else 0,
             kudos_count=int(strava_activity.kudos_count) if strava_activity.kudos_count else 0,
             comment_count=int(strava_activity.comment_count) if strava_activity.comment_count else 0,
@@ -261,11 +282,13 @@ class StravaService:
             return False
         
         # Revoke token with Strava
-        try:
-            client = self._client()
-            client.deauthorize()
-        except:
-            pass  # Continue even if revocation fails
+        response = requests.post(
+            "https://www.strava.com/oauth/revoke",
+            auth=(self.client_id, self.client_secret),
+            data={"token": token.refresh_token, "token_type_hint": "refresh_token"},
+            timeout=20,
+        )
+        response.raise_for_status()
         
         # Delete token and activities
         db.delete(token)

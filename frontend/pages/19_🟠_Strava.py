@@ -1,341 +1,101 @@
 import streamlit as st
-import requests
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from auth import is_authenticated, get_current_user, restore_session_from_storage
-from config import settings
-from nature_theme import apply_nature_theme
 import pandas as pd
-from datetime import datetime
+from auth import is_authenticated, get_current_user, restore_session_from_storage
+from api_client import api_request
+from nature_theme import apply_nature_theme
 
-st.set_page_config(page_title="Strava Connect - Kilele", page_icon="🟠", layout="wide")
+st.set_page_config(page_title="Strava - Kilele", page_icon="🟠", layout="wide")
 apply_nature_theme()
 restore_session_from_storage()
+st.title("Strava")
 
-# Check authentication
+if "code" in st.query_params:
+    st.session_state.strava_callback = {
+        key: st.query_params.get(key, "") for key in ("code", "state", "scope")
+    }
+    st.query_params.clear()
+if "error" in st.query_params:
+    st.query_params.clear()
+    st.info("Strava authorization was cancelled. Your account has not changed.")
+
 if not is_authenticated():
-    st.warning("⚠️ Please login to connect Strava")
+    st.info("Sign in to connect your Strava account.")
+    st.page_link("pages/0_🔐_Login.py", label="Sign in", icon="🔐")
     st.stop()
 
-user = get_current_user()
+if st.session_state.get("strava_callback"):
+    callback = st.session_state.pop("strava_callback")
+    with st.spinner("Connecting Strava..."):
+        result = api_request("POST", "/api/strava/callback", json=callback)
+    if result.get("error"):
+        st.error(result["error"])
+    else:
+        st.success("Strava connected.")
 
-st.title("🟠 Connect to Strava")
-st.markdown("*Automatically sync your hiking activities from Strava*")
-st.markdown("---")
+with st.spinner("Checking connection..."):
+    stats = api_request("GET", "/api/strava/stats")
 
-# API base URL can come from Streamlit secrets or environment variables.
-API_BASE_URL = settings.API_BASE_URL.rstrip("/")
-
-
-def get_auth_headers():
-    """Use the current Streamlit session token for backend API calls."""
-    session_token = st.session_state.get("session_token")
-    if session_token:
-        return {"X-Session-Token": session_token}
-
-    access_token = st.session_state.get("access_token")
-    if access_token:
-        return {"Authorization": f"Bearer {access_token}"}
-
-    return {}
-
-# Check connection status
-@st.cache_data(ttl=60)
-def get_strava_stats(user_id):
-    try:
-        response = requests.get(
-            f"{API_BASE_URL}/api/strava/stats",
-            headers=get_auth_headers(),
-            timeout=10,
-        )
-        if response.status_code == 200:
-            return response.json()
-        return None
-    except:
-        return None
-
-stats = get_strava_stats(user['id'])
-is_connected = stats and stats.get('is_connected', False)
-
-# Main content
-if is_connected:
-    st.success("✅ Your Strava account is connected!")
-    
-    # Display stats
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Total Activities", stats['total_activities'])
-        st.metric("Distance", f"{stats['total_distance_km']:.1f} km")
-    
-    with col2:
-        st.metric("Time", f"{stats['total_time_hours']:.1f} hrs")
-        st.metric("Elevation", f"{stats['total_elevation_m']:.0f} m")
-    
-    with col3:
-        st.metric("Kudos", stats['total_kudos'])
-        st.metric("Matched Trails", stats['matched_trails'])
-    
-    if stats.get('last_synced'):
-        last_sync = datetime.fromisoformat(stats['last_synced'])
-        st.info(f"⏰ Last synced: {last_sync.strftime('%B %d, %Y at %I:%M %p')}")
-    
-    st.markdown("---")
-    
-    # Sync controls
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📥 Sync Activities")
-        
-        days = st.slider("Sync activities from last X days", 7, 365, 30)
-        
-        if st.button("🔄 Sync Now", type="primary", width="stretch"):
-            with st.spinner("Syncing activities from Strava..."):
-                try:
-                    response = requests.post(
-                        f"{API_BASE_URL}/api/strava/sync?days={days}",
-                        headers=get_auth_headers(),
-                        timeout=30,
-                    )
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        st.success(f"✅ {data['message']}")
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Sync failed: {response.json().get('detail', 'Unknown error')}")
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-    
-    with col2:
-        st.subheader("⚙️ Settings")
-        
-        # Auto-sync toggle
-        sync_enabled = st.toggle("Enable auto-sync", value=True)
-        
-        if st.button("💾 Save Settings", width="stretch"):
-            try:
-                response = requests.post(
-                    f"{API_BASE_URL}/api/strava/toggle-autosync?enabled={sync_enabled}",
-                    headers=get_auth_headers(),
-                    timeout=10,
-                )
-                
-                if response.status_code == 200:
-                    st.success("✅ Settings saved")
-                else:
-                    st.error("❌ Failed to save settings")
-            except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
-        
-        st.markdown("---")
-        
-        if st.button("🔌 Disconnect Strava", type="secondary", width="stretch"):
-            try:
-                response = requests.delete(
-                    f"{API_BASE_URL}/api/strava/disconnect",
-                    headers=get_auth_headers(),
-                    timeout=10,
-                )
-                
-                if response.status_code == 200:
-                    st.success("✅ Strava disconnected")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error("❌ Failed to disconnect")
-            except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
-    
-    st.markdown("---")
-    
-    # Recent activities
-    st.subheader("📋 Recent Activities")
-    
-    try:
-        response = requests.get(
-            f"{API_BASE_URL}/api/strava/activities?limit=20",
-            headers=get_auth_headers(),
-            timeout=10,
-        )
-        
-        if response.status_code == 200:
-            activities = response.json()
-            
-            if activities:
-                # Create dataframe
-                df = pd.DataFrame([{
-                    "Activity": act['name'],
-                    "Type": act['activity_type'],
-                    "Date": datetime.fromisoformat(act['date']).strftime('%b %d, %Y'),
-                    "Distance": f"{act['distance_km']:.2f} km",
-                    "Duration": f"{act['duration_minutes']:.0f} min",
-                    "Kudos": act['kudos_count'],
-                    "Trail Match": "✅ " + act['matched_trail_name'] if act['is_matched'] else "❌ Not matched"
-                } for act in activities])
-                
-                st.dataframe(df, width="stretch", hide_index=True)
+if stats.get("error"):
+    st.warning(stats["error"])
+    if st.button("Retry", icon=":material/refresh:"):
+        st.rerun()
+elif stats.get("is_connected"):
+    st.success("Connected to Strava")
+    cols = st.columns(3)
+    cols[0].metric("Activities", stats["total_activities"])
+    cols[1].metric("Distance", f"{stats['total_distance_km']:.1f} km")
+    cols[2].metric("Time", f"{stats['total_time_hours']:.1f} hours")
+    sync_col, settings_col = st.columns(2)
+    with sync_col:
+        days = st.slider("Activity history (days)", 7, 365, 30)
+        if st.button("Sync activities", icon=":material/sync:", type="primary"):
+            with st.spinner("Importing activities..."):
+                result = api_request("POST", "/api/strava/sync", params={"days": days})
+            if result.get("error"):
+                st.error(result["error"])
             else:
-                st.info("No activities synced yet. Click 'Sync Now' above.")
-    except Exception as e:
-        st.error(f"❌ Failed to load activities: {str(e)}")
-
+                st.success(result["message"])
+                st.rerun()
+        if stats.get("last_synced"):
+            st.caption("Last synced: " + stats["last_synced"].replace("T", " ")[:19] + " UTC")
+    with settings_col:
+        enabled = st.toggle("Automatic sync", value=stats.get("sync_enabled", False))
+        if enabled != stats.get("sync_enabled", False):
+            result = api_request("POST", "/api/strava/toggle-autosync", params={"enabled": enabled})
+            if result.get("error"):
+                st.error(result["error"])
+            else:
+                st.rerun()
+        disconnect = st.checkbox("Disconnect and remove imported Strava activities")
+        if st.button("Disconnect", icon=":material/link_off:", disabled=not disconnect):
+            result = api_request("DELETE", "/api/strava/disconnect")
+            if result.get("error"):
+                st.error(result["error"])
+            else:
+                st.rerun()
+    st.subheader("Recent activities")
+    activities = api_request("GET", "/api/strava/activities", params={"limit": 50})
+    if isinstance(activities, dict):
+        st.warning(activities.get("error", "Activities unavailable."))
+    elif activities:
+        st.dataframe(pd.DataFrame([{
+            "Activity": item["name"], "Date": item["date"][:10],
+            "Distance (km)": item["distance_km"], "Minutes": item["duration_minutes"],
+            "Trail": item.get("matched_trail_name") or "Unmatched",
+        } for item in activities]), hide_index=True, width="stretch")
+    else:
+        st.info("No Strava activities imported yet.")
+elif stats.get("configured"):
+    if st.button("Connect Strava", type="primary", icon=":material/link:"):
+        result = api_request("GET", "/api/strava/connect")
+        if result.get("error"):
+            st.error(result["error"])
+        else:
+            st.session_state.strava_authorization_url = result["authorization_url"]
+    if st.session_state.get("strava_authorization_url"):
+        st.link_button("Authorize with Strava", st.session_state.strava_authorization_url)
+    st.caption("Access is limited to your profile and activities visible to Everyone or Followers. You can disconnect anytime.")
 else:
-    # Not connected - show connect button
-    st.info("Connect your Strava account to automatically sync hiking activities")
-    
-    # Benefits
-    st.subheader("✨ What you get:")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        - 🔄 **Auto-sync hikes** from Strava
-        - 📊 **Import activity data** (GPS, stats, photos)
-        - 🏔️ **Match trails** automatically
-        - 🏆 **Track achievements** across platforms
-        """)
-    
-    with col2:
-        st.markdown("""
-        - ⏱️ **Real-time updates** via webhooks
-        - 📈 **Combined stats** with Kilele data
-        - 👥 **Social features** integration
-        - 💪 **Never lose your progress**
-        """)
-    
-    st.markdown("---")
-    
-    # Connect button
-    if st.button("🟠 Connect Strava", type="primary", width="stretch"):
-        try:
-            response = requests.get(
-                f"{API_BASE_URL}/api/strava/connect",
-                headers=get_auth_headers(),
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                st.markdown(f"""
-                ### 🔗 Click to authorize:
-                <a href="{data['authorization_url']}" target="_blank" style="
-                    display: inline-block;
-                    background: linear-gradient(135deg, #FC4C02, #FF6B35);
-                    color: white;
-                    padding: 15px 30px;
-                    border-radius: 10px;
-                    text-decoration: none;
-                    font-weight: bold;
-                    font-size: 18px;
-                    margin: 20px 0;
-                    box-shadow: 0 4px 15px rgba(252, 76, 2, 0.3);
-                ">
-                    🟠 Authorize Strava Access
-                </a>
-                
-                <p style="color: #666; font-size: 14px; margin-top: 10px;">
-                You'll be redirected to Strava to authorize access. After authorization, 
-                return here and refresh the page.
-                </p>
-                """, unsafe_allow_html=True)
-            elif response.status_code == 503:
-                error_detail = response.json().get('detail', 'Service unavailable')
-                st.error(f"⚙️ Configuration Required")
-                st.warning(f"""
-                **Strava integration is not yet configured.**
-                
-                {error_detail}
-                
-                **For administrators:** Please set the following environment variables in the backend:
-                - `STRAVA_CLIENT_ID`
-                - `STRAVA_CLIENT_SECRET`
-                - `STRAVA_REDIRECT_URI` (optional)
-                
-                See the 'Setup Instructions for Developers' section below for details.
-                """)
-            else:
-                error_msg = response.json().get('detail', 'Unknown error')
-                st.error(f"❌ Failed to get authorization URL: {error_msg}")
-        except requests.exceptions.ConnectionError:
-            st.error("❌ Cannot connect to backend server")
-            st.warning("""
-            **Backend server is not running.**
-            
-            Please start the backend server:
-            ```bash
-            cd backend
-            python main.py
-            ```
-            
-            The backend should be running at `http://localhost:8000`
-            """)
-        except requests.exceptions.Timeout:
-            st.error("❌ Request timed out - backend server is not responding")
-        except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
-            st.caption("Please check that the backend server is running and Strava credentials are configured.")
-    
-    st.markdown("---")
-    
-    # Privacy notice
-    with st.expander("🔒 Privacy & Permissions"):
-        st.markdown("""
-        ### What we access:
-        - Your public profile information
-        - Activity data (GPS routes, stats, photos)
-        - Activity updates in real-time
-        
-        ### What we DON'T access:
-        - Your private activities (if marked private)
-        - Your Strava password
-        - Your followers or following list
-        - Any payment information
-        
-        ### You can:
-        - Disconnect anytime
-        - Control auto-sync settings
-        - Choose which activities to import
-        
-        **We respect your privacy and follow Strava's API Terms of Service.**
-        """)
-    
-    # Setup instructions
-    with st.expander("⚙️ Setup Instructions for Developers"):
-        st.markdown("""
-        ### Required Environment Variables:
-        
-        ```bash
-        # Backend (.env file)
-        STRAVA_CLIENT_ID=your_client_id
-        STRAVA_CLIENT_SECRET=your_client_secret
-        STRAVA_REDIRECT_URI=http://localhost:8501/strava/callback
-        STRAVA_WEBHOOK_VERIFY_TOKEN=your_verify_token
-        ```
-        
-        ### Steps to get Strava API credentials:
-        1. Go to [strava.com/settings/api](https://www.strava.com/settings/api)
-        2. Create a new app
-        3. Set Authorization Callback Domain to your domain
-        4. Copy Client ID and Client Secret
-        5. Add to backend `.env` file
-        6. Restart backend server
-        
-        ### Webhook Setup (Optional - for real-time sync):
-        ```bash
-        # Subscribe to webhook
-        curl -X POST https://www.strava.com/api/v3/push_subscriptions \\
-          -F client_id=YOUR_CLIENT_ID \\
-          -F client_secret=YOUR_CLIENT_SECRET \\
-          -F callback_url=https://your-domain.com/api/strava/webhook \\
-          -F verify_token=YOUR_VERIFY_TOKEN
-        ```
-        """)
+    st.info("Strava connection is not available yet. Activity-file imports are available.")
 
-# Footer
-st.markdown("---")
-st.caption("🟠 Powered by Strava API • Automatically syncs your outdoor activities")
+st.page_link("pages/13_⌚_Wearables.py", label="Import an activity file", icon=":material/upload_file:")

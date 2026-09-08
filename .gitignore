@@ -20,6 +20,8 @@ kilele.db
 .env
 .env.local
 .env.production
+.env.gmail.local
+client_secret_*.json
 
 # IDEs
 .vscode/

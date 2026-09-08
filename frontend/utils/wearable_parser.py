@@ -28,8 +28,6 @@ class WearableDataParser:
             # Extract all track points
             all_points = []
             total_distance = 0
-            min_elevation = float('inf')
-            max_elevation = float('-inf')
             start_time = None
             end_time = None
             
@@ -43,9 +41,6 @@ class WearableDataParser:
                             'time': point.time
                         })
                         
-                        if point.elevation:
-                            min_elevation = min(min_elevation, point.elevation)
-                            max_elevation = max(max_elevation, point.elevation)
                         
                         if point.time:
                             if not start_time:
@@ -56,7 +51,7 @@ class WearableDataParser:
             total_distance = gpx.length_3d() / 1000  # Convert to km
             
             # Calculate elevation gain
-            elevation_gain = max_elevation - min_elevation if min_elevation != float('inf') else 0
+            elevation_gain = gpx.get_uphill_downhill().uphill or 0
             
             # Calculate duration
             duration_hours = 0
@@ -162,7 +157,10 @@ class WearableDataParser:
             if elevation_gain == 0:
                 elevations = [p.get('elevation', 0) for p in all_points if 'elevation' in p]
                 if elevations:
-                    elevation_gain = max(elevations) - min(elevations)
+                    elevation_gain = sum(max(0, current - previous) for previous, current in zip(elevations, elevations[1:]))
+
+            if duration_hours == 0 and start_time and end_time:
+                duration_hours = max(0, (end_time - start_time).total_seconds() / 3600)
             
             # Calculate center point
             center_lat = sum(p['latitude'] for p in all_points) / len(all_points) if all_points else 0
@@ -271,7 +269,7 @@ class WearableDataParser:
             
             # Calculate elevation gain
             elevations = [p.get('elevation', 0) for p in all_points if 'elevation' in p]
-            elevation_gain = max(elevations) - min(elevations) if elevations else 0
+            elevation_gain = sum(max(0, current - previous) for previous, current in zip(elevations, elevations[1:]))
             
             # Calculate duration
             duration_hours = 0

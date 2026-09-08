@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import init_database
 from services import get_followers, get_following, follow_user, unfollow_user, search_users, get_user_stats
-from auth import is_authenticated, get_current_user
+from auth import is_authenticated, get_current_user, restore_session_from_storage
 from nature_theme import apply_nature_theme
 
 init_database()
@@ -22,6 +22,7 @@ st.set_page_config(
     layout="wide"
 )
 apply_nature_theme()
+restore_session_from_storage()
 
 # Check authentication
 if not is_authenticated():

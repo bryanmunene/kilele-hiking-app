@@ -1,335 +1,146 @@
-"""
-Register for Upcoming Hikes with M-Pesa Payment
-Browse upcoming organized hikes and register with payment
-"""
-import streamlit as st
-import sys
-import os
+"""Browse group hikes and manage bookings with verified M-Pesa checkout."""
 from datetime import datetime
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import streamlit as st
+from sqlalchemy import func
 from auth import is_authenticated, get_current_user, restore_session_from_storage
-from services import get_all_hikes, get_user_planned_hikes, register_for_hike, create_payment, update_payment_status, get_user_registrations
-from image_utils import display_image
+from api_client import api_request
+from database import get_db
+from models import PlannedHike, Hike, HikeRegistration
 from nature_theme import apply_nature_theme
-from mpesa_service import (
-    format_phone_number_display,
-    initiate_stk_push,
-    is_mpesa_configured,
-)
+from services import register_for_hike, get_user_registrations
 
-# Page config
-st.set_page_config(
-    page_title="Register for Hikes - Kilele",
-    page_icon="🎫",
-    layout="wide"
-)
+st.set_page_config(page_title="Register for Hikes - Kilele", page_icon="🎫", layout="wide")
 apply_nature_theme()
-
-# Restore session after page configuration.
 restore_session_from_storage()
+st.title("Register for hikes")
 
-# Auth check
 if not is_authenticated():
-    st.warning("⚠️ Please login to register for hikes")
+    st.info("Sign in to book a hike.")
+    st.page_link("pages/0_🔐_Login.py", label="Sign in", icon="🔐")
     st.stop()
-
 user = get_current_user()
-mpesa_configured = is_mpesa_configured()
 
-st.title("🎫 Register for Upcoming Hikes")
-st.markdown("Browse and register for organized group hikes. Pay securely via M-Pesa.")
+with get_db() as db:
+    counts = db.query(
+        HikeRegistration.planned_hike_id,
+        func.count(HikeRegistration.id).label("total"),
+    ).filter(HikeRegistration.status != "cancelled").group_by(HikeRegistration.planned_hike_id).subquery()
+    rows = db.query(PlannedHike, Hike, counts.c.total).join(Hike, PlannedHike.hike_id == Hike.id).outerjoin(
+        counts, counts.c.planned_hike_id == PlannedHike.id
+    ).filter(PlannedHike.status == "planned", PlannedHike.planned_date > datetime.utcnow()).order_by(PlannedHike.planned_date).all()
+    upcoming = [{
+        "id": ph.id, "name": hike.name, "location": hike.location, "date": ph.planned_date,
+        "price": ph.price or 0, "capacity": ph.max_participants,
+        "count": count or 0, "description": ph.notes or hike.description or "",
+        "difficulty": hike.difficulty,
+    } for ph, hike, count in rows]
+registrations = get_user_registrations(user["id"])
 
-# Tabs for different views
-tab1, tab2 = st.tabs(["📅 Available Hikes", "✅ My Registrations"])
+@st.cache_data(ttl=60, show_spinner=False)
+def payment_configuration(session_token):
+    return api_request("GET", "/api/payments/config")
 
-with tab1:
-    st.markdown("### Upcoming Organized Hikes")
-    
-    # Get actual upcoming hikes from database (created by admins)
-    from database import get_db
-    from models import PlannedHike, Hike, HikeRegistration, User
-    
-    try:
-        with get_db() as db:
-            # Get all planned hikes that are upcoming and planned status
-            planned_hikes_query = db.query(PlannedHike).filter(
-                PlannedHike.status == "planned",
-                PlannedHike.planned_date >= datetime.now()
-            ).order_by(PlannedHike.planned_date.asc()).all()
-            
-            # Convert to list of dicts
-            sample_hikes = []
-            for ph in planned_hikes_query:
-                hike = db.query(Hike).filter(Hike.id == ph.hike_id).first()
-                if not hike:
-                    continue
-                
-                # Count current registrations
-                current_registrations = db.query(HikeRegistration).filter(
-                    HikeRegistration.planned_hike_id == ph.id,
-                    HikeRegistration.status != "cancelled"
-                ).count()
-                
-                # Get organizer
-                organizer = db.query(User).filter(User.id == ph.user_id).first()
-                
-                sample_hikes.append({
-                    "id": ph.id,
-                    "hike_name": hike.name,
-                    "location": hike.location,
-                    "date": ph.planned_date.isoformat(),
-                    "price": ph.price or 0,
-                    "max_participants": ph.max_participants or 20,
-                    "current_participants": current_registrations,
-                    "organizer": organizer.username if organizer else "Kilele Adventures",
-                    "description": ph.notes or hike.description or "Join us for an amazing hiking experience!",
-                    "difficulty": hike.difficulty
-                })
-    
-    except Exception as e:
-        st.error(f"Error loading hikes: {e}")
-        sample_hikes = []
-    
-    if not sample_hikes:
-        st.info("📭 No upcoming organized hikes available yet. Check back soon or contact an admin to schedule one!")
+config = {"available": False, "sandbox_available": False}
+if any(h["price"] > 0 for h in upcoming) or any(r["price"] > 0 for r in registrations):
+    with st.spinner("Checking checkout availability..."):
+        config = payment_configuration(st.session_state.get("session_token"))
+checkout_enabled = config.get("available") or config.get("sandbox_available")
+if config.get("sandbox_available"):
+    st.warning("Sandbox mode: test payments cannot confirm a paid booking.")
+if config.get("error"):
+    st.warning(config["error"])
+if st.session_state.get("booking_feedback"):
+    st.info(st.session_state.pop("booking_feedback"))
+
+def start_payment(hike_id, phone):
+    with st.spinner("Requesting payment..."):
+        result = api_request("POST", "/api/payments/checkout", json={
+            "planned_hike_id": hike_id, "phone_number": phone,
+        })
+    if result.get("error"):
+        st.error(result["error"])
     else:
-        # Filter options
-        col1, col2, col3 = st.columns([2, 2, 2])
-        with col1:
-            difficulty_filter = st.selectbox("🎯 Difficulty", ["All", "Easy", "Moderate", "Hard"])
-        with col2:
-            price_filter = st.selectbox("💰 Price", ["All", "Free", "Under KES 2,000", "Under KES 5,000", "KES 5,000+"])
-        with col3:
-            availability_filter = st.selectbox("👥 Availability", ["All", "Spots Available", "Almost Full"])
-        
-        # Filter hikes
-        filtered_hikes = sample_hikes
-        if difficulty_filter != "All":
-            filtered_hikes = [h for h in filtered_hikes if h['difficulty'] == difficulty_filter]
-        if price_filter == "Free":
-            filtered_hikes = [h for h in filtered_hikes if h['price'] == 0]
-        elif price_filter == "Under KES 2,000":
-            filtered_hikes = [h for h in filtered_hikes if h['price'] < 2000]
-        elif price_filter == "Under KES 5,000":
-            filtered_hikes = [h for h in filtered_hikes if h['price'] < 5000]
-        elif price_filter == "KES 5,000+":
-            filtered_hikes = [h for h in filtered_hikes if h['price'] >= 5000]
-        
-        if availability_filter == "Spots Available":
-            filtered_hikes = [h for h in filtered_hikes if h['current_participants'] < h['max_participants'] * 0.8]
-        elif availability_filter == "Almost Full":
-            filtered_hikes = [h for h in filtered_hikes if h['current_participants'] >= h['max_participants'] * 0.8]
-        
-        st.markdown(f"**{len(filtered_hikes)} hikes found**")
-        
-        if not filtered_hikes:
-            st.info("No hikes match your filters. Try adjusting your search criteria.")
-        
-        # Display hikes
-        for hike in filtered_hikes:
-            with st.container():
-                st.markdown(f"""
-                    <div style="
-                        background: white;
-                        border-radius: 12px;
-                        padding: 1.5rem;
-                        margin-bottom: 1.5rem;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                    ">
-                """, unsafe_allow_html=True)
-                
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    # Hike details
-                    st.markdown(f"### {hike['hike_name']}")
-                    st.markdown(f"📍 **{hike['location']}** | 📅 **{datetime.fromisoformat(hike['date']).strftime('%B %d, %Y')}**")
-                    
-                    # Difficulty badge
-                    difficulty_colors = {'Easy': '#51cf66', 'Moderate': '#ffd43b', 'Hard': '#ff6b6b'}
-                    color = difficulty_colors.get(hike['difficulty'], '#868e96')
-                    st.markdown(f"<span style='background: {color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;'>{hike['difficulty']}</span>", unsafe_allow_html=True)
-                    
-                    st.markdown(f"<p style='color: #666; margin-top: 0.5rem;'>{hike['description']}</p>", unsafe_allow_html=True)
-                    st.caption(f"👤 Organized by **{hike['organizer']}**")
-            
-            with col2:
-                # Pricing and availability
-                if hike['price'] == 0:
-                    st.markdown("<h2 style='color: #51cf66; margin-bottom: 0;'>FREE</h2>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<h2 style='color: #1e3a5f; margin-bottom: 0;'>KES {hike['price']:,.0f}</h2>", unsafe_allow_html=True)
-                
-                # Availability indicator
-                spots_left = hike['max_participants'] - hike['current_participants']
-                availability_pct = (hike['current_participants'] / hike['max_participants']) * 100
-                
-                if spots_left > 0:
-                    color = '#51cf66' if availability_pct < 70 else '#ffd43b' if availability_pct < 90 else '#ff6b6b'
-                    st.markdown(f"<p style='color: {color}; font-weight: 600;'>✅ {spots_left} spots left</p>", unsafe_allow_html=True)
-                    st.progress(availability_pct / 100)
-                    
-                    # Registration button
-                    paid_checkout_unavailable = hike["price"] > 0 and not mpesa_configured
-                    if st.button(
-                        "Register Now",
-                        key=f"register_{hike['id']}",
-                        type="primary",
-                        disabled=paid_checkout_unavailable,
-                        help="M-Pesa checkout must be configured before paid hikes can be booked online."
-                        if paid_checkout_unavailable
-                        else None,
-                    ):
-                        st.session_state[f'registering_{hike["id"]}'] = True
-                        st.rerun()
-                    if paid_checkout_unavailable:
-                        st.caption("Paid checkout is temporarily unavailable.")
-                else:
-                    st.markdown("<p style='color: #ff6b6b; font-weight: 600;'>❌ Fully Booked</p>", unsafe_allow_html=True)
-            
-            # Registration form (appears when button clicked)
-            if st.session_state.get(f'registering_{hike["id"]}', False):
-                st.markdown("---")
-                st.markdown("#### Complete Your Registration")
-                
-                with st.form(key=f"registration_form_{hike['id']}"):
-                    phone = st.text_input(
-                        "📱 M-Pesa Phone Number",
-                        placeholder="0712345678 or 254712345678",
-                        help="Enter your M-Pesa number to receive payment prompt"
-                    )
-                    
-                    agree = st.checkbox("I agree to the terms and conditions")
-                    
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        submit = st.form_submit_button("💳 Pay with M-Pesa" if hike['price'] > 0 else "✅ Confirm Registration", type="primary")
-                    with col_b:
-                        cancel = st.form_submit_button("❌ Cancel")
-                    
-                    if cancel:
-                        st.session_state[f'registering_{hike["id"]}'] = False
-                        st.rerun()
-                    
-                    if submit:
-                        if not agree:
-                            st.error("Please agree to the terms and conditions")
-                        elif hike['price'] > 0 and not phone:
-                            st.error("Please enter your M-Pesa phone number")
-                        elif hike['price'] > 0 and not mpesa_configured:
-                            st.error("M-Pesa payments are not configured yet, so this paid hike cannot be booked online.")
-                        else:
-                            # Create registration
-                            result = register_for_hike(
-                                user_id=user['id'],
-                                planned_hike_id=hike['id'],  # In production, use actual planned_hike ID
-                                phone_number=phone if hike['price'] > 0 else ""
-                            )
-                            
-                            if "error" in result:
-                                st.error(f"❌ {result['error']}")
+        st.session_state.booking_feedback = result.get("message") or "Payment status updated."
+        st.rerun()
+
+available_tab, bookings_tab = st.tabs(["Available hikes", "My registrations"])
+with available_tab:
+    difficulty_col, price_col = st.columns(2)
+    difficulty = difficulty_col.selectbox("Difficulty", ["All", "Easy", "Moderate", "Hard", "Extreme"])
+    price = price_col.selectbox("Price", ["All", "Free", "Under KES 2,000", "Under KES 5,000", "KES 5,000+"])
+    filtered = [h for h in upcoming if difficulty == "All" or h["difficulty"] == difficulty]
+    if price == "Free":
+        filtered = [h for h in filtered if h["price"] == 0]
+    elif price.startswith("Under"):
+        filtered = [h for h in filtered if h["price"] < (2000 if "2,000" in price else 5000)]
+    elif price == "KES 5,000+":
+        filtered = [h for h in filtered if h["price"] >= 5000]
+    if not filtered:
+        st.info("No upcoming hikes match these filters.")
+    for hike in filtered:
+        with st.container(border=True):
+            detail, booking = st.columns([2, 1])
+            with detail:
+                st.subheader(hike["name"])
+                st.caption(f"{hike['location']} · {hike['date']:%d %B %Y} · {hike['difficulty']}")
+                st.write(hike["description"])
+            with booking:
+                st.metric("Hike fee", f"KES {hike['price']:,.0f}" if hike["price"] else "Free")
+                spots = None if not hike["capacity"] else max(0, hike["capacity"] - hike["count"])
+                st.caption(f"{spots} spots available" if spots is not None else f"{hike['count']} registered")
+            existing = next((r for r in registrations if r["planned_hike_id"] == hike["id"] and r["status"] != "cancelled"), None)
+            if existing:
+                st.info("You have a registration for this hike. Its payment and booking status are under My registrations.")
+            elif spots == 0:
+                st.info("Fully booked")
+            elif hike["price"] and not checkout_enabled:
+                st.info("Online payment is currently unavailable for this hike.")
+            else:
+                with st.expander("Book this hike"):
+                    with st.form(f"book_{hike['id']}"):
+                        phone = st.text_input("M-Pesa phone number", placeholder="0712345678") if hike["price"] else ""
+                        agreed = st.checkbox(f"Confirm booking for KES {hike['price']:,.0f}" if hike["price"] else "Confirm my place")
+                        submitted = st.form_submit_button(
+                            "Send test payment" if config.get("sandbox_available") and hike["price"] else "Pay with M-Pesa" if hike["price"] else "Register",
+                            type="primary", icon=":material/event_available:",
+                        )
+                        if submitted:
+                            if not agreed:
+                                st.error("Confirm your booking before continuing.")
+                            elif hike["price"]:
+                                start_payment(hike["id"], phone)
                             else:
-                                if hike['price'] > 0:
-                                    # Initiate M-Pesa payment
-                                    with st.spinner("Initiating M-Pesa payment..."):
-                                        # Create payment record
-                                        payment_result = create_payment(
-                                            registration_id=result['registration_id'],
-                                            user_id=user['id'],
-                                            amount=hike['price'],
-                                            phone_number=phone
-                                        )
-                                        
-                                        if "error" in payment_result:
-                                            st.error(f"❌ {payment_result['error']}")
-                                        else:
-                                            # Initiate STK Push
-                                            mpesa_result = initiate_stk_push(
-                                                phone_number=phone,
-                                                amount=hike['price'],
-                                                account_reference=f"HIKE-{result['registration_id']}",
-                                                transaction_desc=f"Registration for {hike['hike_name']}"
-                                            )
-                                            
-                                            if mpesa_result.get("success"):
-                                                # Update payment with M-Pesa IDs
-                                                update_payment_status(
-                                                    payment_id=payment_result['payment_id'],
-                                                    status="pending",
-                                                    checkout_request_id=mpesa_result['checkout_request_id'],
-                                                    merchant_request_id=mpesa_result['merchant_request_id']
-                                                )
-                                                st.success(f"✅ {mpesa_result.get('customer_message', 'Payment prompt sent!')}")
-                                                st.info(f"📱 Check your phone {format_phone_number_display(phone)} for M-Pesa payment prompt")
-                                                st.balloons()
-                                            else:
-                                                st.error(f"❌ Payment failed: {mpesa_result.get('error')}")
+                                result = register_for_hike(user["id"], hike["id"], "")
+                                if result.get("error"):
+                                    st.error(result["error"])
                                 else:
-                                    # Free hike - just confirm
-                                    st.success(f"✅ Registration successful for {hike['hike_name']}!")
-                                    st.balloons()
-                                
-                                st.session_state[f'registering_{hike["id"]}'] = False
-                                st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
+                                    st.session_state.booking_feedback = "Your place is confirmed."
+                                    st.rerun()
 
-with tab2:
-    st.markdown("### My Registrations")
-    
-    registrations = get_user_registrations(user['id'])
-    
+with bookings_tab:
     if not registrations:
-        st.info("📭 You haven't registered for any hikes yet")
-    else:
-        for reg in registrations:
-            status_colors = {
-                'confirmed': '#51cf66',
-                'pending': '#ffd43b',
-                'cancelled': '#ff6b6b'
-            }
-            payment_colors = {
-                'paid': '#51cf66',
-                'unpaid': '#ff6b6b',
-                'refunded': '#868e96'
-            }
-            
-            with st.container():
-                st.markdown(f"""
-                    <div style="
-                        background: white;
-                        border-radius: 12px;
-                        padding: 1.5rem;
-                        margin-bottom: 1rem;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                    ">
-                """, unsafe_allow_html=True)
-                
-                col1, col2, col3 = st.columns([3, 1, 1])
-                
-                with col1:
-                    st.markdown(f"### {reg['hike_name']}")
-                    st.caption(f"📍 {reg['hike_location']}")
-                    st.caption(f"📅 {datetime.fromisoformat(reg['planned_date']).strftime('%B %d, %Y at %I:%M %p')}")
-                
-                with col2:
-                    status_color = status_colors.get(reg['status'], '#868e96')
-                    st.markdown(f"<span style='background: {status_color}; color: white; padding: 6px 14px; border-radius: 12px; font-size: 0.9rem; font-weight: 600;'>{reg['status'].upper()}</span>", unsafe_allow_html=True)
-                
-                with col3:
-                    payment_color = payment_colors.get(reg['payment_status'], '#868e96')
-                    st.markdown(f"<span style='background: {payment_color}; color: white; padding: 6px 14px; border-radius: 12px; font-size: 0.9rem; font-weight: 600;'>{reg['payment_status'].upper()}</span>", unsafe_allow_html=True)
-                
-                if reg['price'] > 0:
-                    st.markdown(f"**Amount**: KES {reg['price']:,.0f}")
-                
-                st.markdown("</div>", unsafe_allow_html=True)
-
-st.markdown("---")
-st.markdown("""
-    <div style='text-align: center; color: #666; font-size: 0.9rem;'>
-        <p>💳 Secure payments powered by M-Pesa</p>
-        <p>📱 Questions? Contact support@kilele-hiking.co.ke</p>
-    </div>
-""", unsafe_allow_html=True)
+        st.info("No registrations yet.")
+    for registration in registrations:
+        with st.container(border=True):
+            st.subheader(registration["hike_name"])
+            st.caption(f"{registration['hike_location']} · {registration['planned_date'][:10]}")
+            cols = st.columns(3)
+            cols[0].metric("Booking", registration["status"].title())
+            cols[1].metric("Payment", registration["payment_status"].title())
+            cols[2].metric("Fee", f"KES {registration['price']:,.0f}")
+            if registration["price"] and registration["payment_status"] != "paid":
+                if st.button("Check payment status", key=f"check_{registration['registration_id']}", icon=":material/refresh:"):
+                    with st.spinner("Checking with M-Pesa..."):
+                        result = api_request("POST", f"/api/payments/registrations/{registration['registration_id']}/status")
+                    if result.get("error"):
+                        st.error(result["error"])
+                    elif result.get("status") == "completed" and result.get("environment") == "production":
+                        st.session_state.booking_feedback = "Payment received. Your booking is confirmed."
+                        st.rerun()
+                    else:
+                        st.info("Test payment completed; booking remains unpaid." if result.get("status") == "completed" else f"Payment status: {result.get('status', 'pending')}.")
+                if checkout_enabled and datetime.fromisoformat(registration["planned_date"]) > datetime.utcnow():
+                    with st.form(f"retry_{registration['registration_id']}"):
+                        phone = st.text_input("M-Pesa phone number", value=registration["phone_number"])
+                        if st.form_submit_button("Pay / retry payment", icon=":material/payments:"):
+                            start_payment(registration["planned_hike_id"], phone)

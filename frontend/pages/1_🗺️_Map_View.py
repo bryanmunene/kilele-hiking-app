@@ -3,6 +3,7 @@ import folium
 from streamlit_folium import st_folium
 import sys
 import os
+from html import escape
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -45,28 +46,6 @@ def main():
     st.title("🗺️ Trail Location Map")
     st.markdown("*Interactive map showing all hiking trails across Kenya*")
     
-    # Add mobile-responsive styles
-    st.markdown("""
-        <style>
-        /* Mobile responsive map container */
-        iframe {
-            width: 100% !important;
-            border-radius: 10px;
-        }
-        
-        @media (max-width: 768px) {
-            iframe {
-                height: 400px !important;
-            }
-            [data-testid="column"] {
-                width: 100% !important;
-                min-width: 100% !important;
-                margin-bottom: 10px !important;
-            }
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
     # Fetch hikes
     hikes = fetch_hikes()
     
@@ -75,7 +54,7 @@ def main():
         return
     
     # Filter trails with valid coordinates
-    trails_with_coords = [h for h in hikes if h.get('latitude') and h.get('longitude')]
+    trails_with_coords = [h for h in hikes if h.get('latitude') is not None and h.get('longitude') is not None]
     
     if not trails_with_coords:
         st.warning("No trails have GPS coordinates yet")
@@ -112,21 +91,21 @@ def main():
         color = create_difficulty_color(hike['difficulty'])
         
         popup_html = f"""
-        <div style="width: 250px;">
-            <h4 style="color: #2e7d32;">{hike['name']}</h4>
-            <p><strong>📍 Location:</strong> {hike['location']}</p>
+        <div style="width: 210px; max-width: 100%; overflow-wrap: anywhere;">
+            <h4 style="color: #2e7d32;">{escape(hike['name'])}</h4>
+            <p><strong>📍 Location:</strong> {escape(hike['location'])}</p>
             <p><strong>⚠️ Difficulty:</strong> <span style="color: {color};">{hike['difficulty']}</span></p>
             <p><strong>📏 Distance:</strong> {hike['distance_km']} km</p>
             <p><strong>⏱️ Duration:</strong> {hike['estimated_duration_hours']} hours</p>
             {f"<p><strong>⛰️ Elevation:</strong> {hike['elevation_gain_m']} m</p>" if hike.get('elevation_gain_m') else ""}
-            <p><em>{hike.get('description', '')[:150]}...</em></p>
+            <p><em>{escape((hike.get('description') or '')[:150])}...</em></p>
         </div>
         """
         
         folium.Marker(
             location=[hike['latitude'], hike['longitude']],
-            popup=folium.Popup(popup_html, max_width=300),
-            tooltip=hike['name'],
+            popup=folium.Popup(popup_html, max_width=240),
+            tooltip=escape(hike['name']),
             icon=folium.Icon(color=color, icon='mountain', prefix='fa')
         ).add_to(m)
     
@@ -143,7 +122,7 @@ def main():
     
     # Display the map
     st.markdown("---")
-    st_folium(m, width=None, height=600)
+    st_folium(m, use_container_width=True, height=480, returned_objects=[], key="trail_map")
     
     # Legend
     st.markdown("---")

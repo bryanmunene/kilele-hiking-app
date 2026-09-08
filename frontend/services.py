@@ -1396,9 +1396,13 @@ def register_for_hike(user_id: int, planned_hike_id: int, phone_number: str) -> 
         from models import HikeRegistration, PlannedHike
         with get_db() as db:
             # Check if hike exists
-            planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).first()
+            planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).with_for_update().first()
             if not planned_hike:
                 return {"error": "Hike not found"}
+            if planned_hike.status != "planned" or planned_hike.planned_date <= datetime.utcnow():
+                return {"error": "This hike is no longer open for registration"}
+            if (planned_hike.price or 0) > 0:
+                return {"error": "Paid registrations must use the secure checkout service"}
             
             # Check if already registered
             existing = db.query(HikeRegistration).filter(
@@ -1455,6 +1459,8 @@ def get_user_registrations(user_id: int) -> list:
                     hike = db.query(Hike).filter(Hike.id == planned_hike.hike_id).first()
                     result.append({
                         "registration_id": reg.id,
+                        "planned_hike_id": reg.planned_hike_id,
+                        "phone_number": reg.phone_number or "",
                         "hike_name": hike.name if hike else "Unknown",
                         "hike_location": hike.location if hike else "",
                         "planned_date": planned_hike.planned_date.isoformat(),

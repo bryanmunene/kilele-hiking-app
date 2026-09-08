@@ -6,6 +6,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
+from html import escape
 from auth import is_authenticated, get_current_user, restore_session_from_storage
 from services import (
     get_all_hikes, get_hike, create_planned_hike, 
@@ -220,8 +221,7 @@ with tab2:
         st.info("📭 No planned hikes yet. Schedule your first hike in the 'Plan New Hike' tab!")
     else:
         for hike in planned_hikes:
-            with st.container():
-                st.markdown('<div class="planned-hike-card">', unsafe_allow_html=True)
+            with st.container(border=True):
                 
                 col1, col2 = st.columns([3, 1])
                 
@@ -229,8 +229,8 @@ with tab2:
                     # Title and status
                     status_class = f"status-{hike['status']}"
                     st.markdown(f"""
-                        <h3 style="margin: 0;">{hike['hike_name']}</h3>
-                        <p style="margin: 0.5rem 0;">📍 {hike['hike_location']}</p>
+                        <h3 style="margin: 0;">{escape(hike['hike_name'])}</h3>
+                        <p style="margin: 0.5rem 0;">📍 {escape(hike['hike_location'])}</p>
                         <span class="{status_class}">{hike['status'].upper()}</span>
                     """, unsafe_allow_html=True)
                     
@@ -267,7 +267,7 @@ with tab2:
                         st.rerun()
                 
                 # Map with driving directions
-                if hike['status'] == 'planned' and hike['hike_latitude'] and hike['hike_longitude']:
+                if hike['status'] == 'planned' and hike['hike_latitude'] is not None and hike['hike_longitude'] is not None:
                     with st.expander("🗺️ View Map & Add Waypoints"):
                         # Create map centered on trail
                         m = folium.Map(
@@ -278,8 +278,8 @@ with tab2:
                         # Add trail marker
                         folium.Marker(
                             [hike['hike_latitude'], hike['hike_longitude']],
-                            popup=f"<b>{hike['hike_name']}</b>",
-                            tooltip=hike['hike_name'],
+                            popup=f"<b>{escape(hike['hike_name'])}</b>",
+                            tooltip=escape(hike['hike_name']),
                             icon=folium.Icon(color='red', icon='mountain', prefix='fa')
                         ).add_to(m)
                         
@@ -288,13 +288,13 @@ with tab2:
                             for idx, waypoint in enumerate(hike['driving_directions'], 1):
                                 folium.Marker(
                                     [waypoint['lat'], waypoint['lng']],
-                                    popup=f"<b>Waypoint {idx}:</b> {waypoint.get('name', 'Stop')}",
+                                    popup=f"<b>Waypoint {idx}:</b> {escape(waypoint.get('name', 'Stop'))}",
                                     tooltip=f"Waypoint {idx}",
                                     icon=folium.Icon(color='blue', icon='info-sign')
                                 ).add_to(m)
                         
                         # Display map
-                        st_folium(m, width=700, height=400)
+                        st_folium(m, use_container_width=True, height=400, returned_objects=[], key=f"planned_map_{hike['id']}")
                         
                         # Add waypoint form
                         st.markdown("#### Add Waypoint/Stop")
@@ -310,7 +310,7 @@ with tab2:
                             wp_lng = st.number_input("Longitude", key=f"wp_lng_{hike['id']}", format="%.6f")
                         
                         if st.button("📍 Add Waypoint", key=f"add_wp_{hike['id']}"):
-                            if wp_lat and wp_lng:
+                            if -90 <= wp_lat <= 90 and -180 <= wp_lng <= 180:
                                 waypoint = {
                                     "name": wp_name or "Stop",
                                     "lat": wp_lat,
@@ -328,13 +328,11 @@ with tab2:
                             for idx, wp in enumerate(hike['driving_directions'], 1):
                                 st.markdown(f"""
                                     <div class="waypoint-item">
-                                        <b>Stop {idx}:</b> {wp.get('name', 'Waypoint')}<br>
+                                        <b>Stop {idx}:</b> {escape(wp.get('name', 'Waypoint'))}<br>
                                         <small>📍 {wp['lat']:.6f}, {wp['lng']:.6f}</small>
                                     </div>
                                 """, unsafe_allow_html=True)
                 
-                st.markdown('</div>', unsafe_allow_html=True)
-                st.markdown("<br>", unsafe_allow_html=True)
 
 # Footer tips
 st.markdown("---")

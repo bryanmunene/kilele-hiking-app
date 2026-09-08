@@ -356,6 +356,7 @@ class Payment(Base):
     checkout_request_id = Column(String)  # STK Push request ID
     merchant_request_id = Column(String)  # M-Pesa merchant request ID
     status = Column(String, default="pending")  # pending, completed, failed, cancelled
+    environment = Column(String, default="sandbox")
     payment_method = Column(String, default="mpesa")  # mpesa, cash, bank
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

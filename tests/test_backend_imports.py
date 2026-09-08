@@ -17,8 +17,14 @@ def clear_backend_modules():
         "database",
         "main",
         "models",
+        "routers",
+        "schemas",
         "rate_limiter",
         "strava_service",
+        "strava_scheduler",
+        "auth_actions",
+        "mpesa_service",
+        "email_service",
     ]:
         sys.modules.pop(module_name, None)
     for module_name in list(sys.modules):
@@ -42,7 +48,7 @@ class BackendImportTests(unittest.TestCase):
 
                 configure_mappers()
 
-                route_paths = {route.path for route in main.app.routes}
+                route_paths = set(main.app.openapi()["paths"])
                 self.assertIn("/health", route_paths)
                 self.assertIn("/api/status", route_paths)
                 self.assertTrue(any(path.startswith("/api/v1/hikes") for path in route_paths))

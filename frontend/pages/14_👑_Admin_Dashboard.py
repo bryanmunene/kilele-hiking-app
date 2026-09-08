@@ -16,7 +16,7 @@ from services import (
     delete_review_admin, get_all_reviews_admin, get_recent_activity,
     get_all_hikes
 )
-from auth import is_authenticated, get_current_user
+from auth import is_authenticated, get_current_user, restore_session_from_storage
 from nature_theme import apply_nature_theme
 
 # Initialize database
@@ -25,6 +25,7 @@ init_database()
 # Page configuration
 st.set_page_config(page_title="Admin Dashboard - Kilele", page_icon="👑", layout="wide")
 apply_nature_theme()
+restore_session_from_storage()
 
 # Check authentication
 if not is_authenticated():

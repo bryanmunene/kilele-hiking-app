@@ -10,20 +10,22 @@ NATURE_CSS = """
         --kilele-mist: #d9ece4;
         --kilele-sky: #d8edf2;
         --kilele-sun: #c96f36;
-        --kilele-paper: #fffdf8;
-        --kilele-stone: #e6e0d3;
+        --kilele-paper: #ffffff;
+        --kilele-stone: #dce3e5;
     }
 
     .stApp {
-        background:
-            linear-gradient(180deg, rgba(216, 237, 242, 0.88) 0%, rgba(246, 244, 237, 0.96) 32%, #f6f4ed 100%);
+        background: #f5f7f9;
         color: var(--kilele-ink);
     }
 
     .block-container {
-        padding-top: 2rem;
+        padding-top: 3.5rem;
         padding-bottom: 3rem;
-        max-width: 1180px;
+        max-width: 1440px;
+        padding-inline: 2rem;
+        min-width: 0;
+        container: kilele-page / inline-size;
     }
 
     [data-testid="stSidebar"] {
@@ -40,14 +42,25 @@ NATURE_CSS = """
         color: #f7f2e8 !important;
     }
 
+    [data-testid="stSidebar"] :is(input, textarea),
+    [data-testid="stSidebar"] [data-testid="stSelectbox"] button,
+    [data-testid="stSidebar"] [data-testid="stSelectbox"] button *,
+    [data-testid="stSidebar"] [data-baseweb="select"] * {
+        color: var(--kilele-ink) !important;
+    }
+
+    [data-testid="stElementContainer"]:has(iframe[title="auth.kilele_session_storage"]) {
+        display: none;
+    }
+
     h1, h2, h3 {
         color: var(--kilele-ink) !important;
         letter-spacing: 0;
     }
 
     h1 {
-        font-size: 3.1rem !important;
-        line-height: 1.05 !important;
+        font-size: 2rem !important;
+        line-height: 1.25 !important;
         margin-bottom: 0.35rem !important;
     }
 
@@ -69,20 +82,21 @@ NATURE_CSS = """
     }
 
     .hero-section, .header-section, .section-panel {
-        background: var(--kilele-paper);
-        border: 1px solid var(--kilele-stone);
-        border-radius: 8px;
-        padding: 1.4rem;
+        background: transparent;
+        border: 0;
+        border-bottom: 1px solid var(--kilele-stone);
+        border-radius: 0;
+        padding: 1rem 0;
         color: var(--kilele-ink);
-        box-shadow: 0 18px 42px rgba(23, 33, 28, 0.08);
+        box-shadow: none;
         margin-bottom: 1.3rem;
     }
 
     .hero-title {
         color: var(--kilele-ink);
-        font-size: 3.6rem;
+        font-size: 2rem;
         font-weight: 800;
-        line-height: 0.98;
+        line-height: 1.25;
     }
 
     .hero-subtitle, .hero-tagline {
@@ -106,7 +120,7 @@ NATURE_CSS = """
         border: 1px solid var(--kilele-stone);
         border-radius: 8px;
         color: var(--kilele-ink);
-        box-shadow: 0 12px 28px rgba(23, 33, 28, 0.08);
+        box-shadow: 0 1px 3px rgba(23, 33, 28, 0.04);
     }
 
     .content-card,
@@ -156,19 +170,18 @@ NATURE_CSS = """
         border-radius: 8px !important;
         font-weight: 700 !important;
         min-height: 42px;
-        transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease !important;
-        box-shadow: 0 8px 18px rgba(31, 79, 58, 0.18) !important;
+        transition: background 0.16s ease, border-color 0.16s ease !important;
+        box-shadow: none !important;
     }
 
     .stButton > button:hover,
     .stDownloadButton > button:hover {
         background: var(--kilele-leaf) !important;
-        transform: translateY(-1px);
-        box-shadow: 0 12px 24px rgba(31, 79, 58, 0.22) !important;
+        box-shadow: none !important;
     }
 
     .stButton > button[kind="secondary"] {
-        background: #fffdf8 !important;
+        background: #ffffff !important;
         color: var(--kilele-forest) !important;
         border: 1px solid var(--kilele-stone) !important;
         box-shadow: none !important;
@@ -179,7 +192,7 @@ NATURE_CSS = """
     .stNumberInput input,
     [data-baseweb="select"] > div {
         border: 1px solid var(--kilele-stone) !important;
-        background: rgba(255, 253, 248, 0.98) !important;
+        background: #ffffff !important;
         border-radius: 8px !important;
         color: var(--kilele-ink) !important;
     }
@@ -193,10 +206,9 @@ NATURE_CSS = """
 
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.4rem;
-        background: rgba(255, 253, 248, 0.68);
-        border: 1px solid var(--kilele-stone);
-        border-radius: 8px;
-        padding: 0.35rem;
+        background: transparent;
+        border-bottom: 1px solid var(--kilele-stone);
+        gap: 0.25rem;
     }
 
     .stTabs [data-baseweb="tab"] {
@@ -206,12 +218,12 @@ NATURE_CSS = """
     }
 
     .stTabs [aria-selected="true"] {
-        background: var(--kilele-forest) !important;
-        color: #ffffff !important;
+        background: #e8f2ed !important;
+        color: var(--kilele-forest) !important;
     }
 
     [data-testid="stMetric"] {
-        background: rgba(255, 253, 248, 0.86);
+        background: #ffffff;
         border: 1px solid var(--kilele-stone);
         border-radius: 8px;
         padding: 0.85rem;
@@ -223,7 +235,7 @@ NATURE_CSS = """
     }
 
     [data-testid="stExpander"] {
-        background: rgba(255, 253, 248, 0.86);
+        background: #ffffff;
         border: 1px solid var(--kilele-stone);
         border-radius: 8px;
     }
@@ -355,43 +367,84 @@ NATURE_CSS = """
         border-radius: 8px;
     }
 
-    img {
+    [data-testid="stImage"] img {
         border-radius: 8px;
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* Size to the available content area, including an open sidebar. */
+    [data-testid="stMain"], [data-testid="stVerticalBlock"],
+    [data-testid="stHorizontalBlock"], [data-testid="stColumn"],
+    [data-testid="stElementContainer"], [data-testid="stTabs"] {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    [data-testid="stMarkdownContainer"] :is(h1, h2, h3, h4, p, li, a),
+    [data-testid="stWidgetLabel"], [data-testid="stMetricValue"] > div,
+    .hero-title, .hero-subtitle, .user-name {
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+
+    [data-testid="stMetricValue"] { font-size: 1.75rem; }
+    [data-testid="stMetricLabel"] p { white-space: normal; }
+
+    .stButton button, .stDownloadButton button, .stLinkButton a,
+    [data-testid="stFormSubmitButton"] button {
+        min-height: 44px;
+        max-width: 100%;
+        height: auto;
+        white-space: normal;
+    }
+
+    .stButton button p, .stLinkButton a p,
+    [data-testid="stFormSubmitButton"] button p {
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: thin;
+    }
+    .stTabs [data-baseweb="tab"] { flex-shrink: 0; min-height: 44px; }
+    .stTabs [data-baseweb="tab"] p { white-space: nowrap; }
+    [data-testid="stDataFrame"], [data-testid="stPlotlyChart"],
+    [data-testid="stCustomComponentV1"] { max-width: 100%; min-width: 0; }
+    [data-testid="stCustomComponentV1"] iframe { max-width: 100%; }
+    [data-testid="stTable"] { overflow-x: auto; }
+    [data-testid="stForm"] { border-radius: 8px; }
+    .st-key-auth_form { max-width: 520px; margin-inline: auto; }
+
+    @container kilele-page (max-width: 980px) {
+        [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            min-width: min(100%, 15rem);
+        }
+    }
+
+    @container kilele-page (max-width: 640px) {
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            flex: 1 1 100% !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
     }
 
     @media (max-width: 768px) {
-        .block-container {
-            padding: 1rem;
-        }
+        .block-container { padding: 3.5rem 1rem 2rem; }
+        input, textarea, select { font-size: 16px !important; }
+    }
 
-        h1 {
-            font-size: 2rem !important;
-        }
-
-        .hero-title {
-            font-size: 2.2rem;
-        }
-
-        .hero-section, .header-section, .section-panel {
-            padding: 1rem;
-        }
-
-        button,
-        .stButton button,
-        .stDownloadButton button {
-            min-height: 46px !important;
-        }
-
-        [data-testid="column"] {
-            width: 100% !important;
-            min-width: 100% !important;
-            margin-bottom: 0.75rem !important;
-        }
-
-        table {
-            display: block !important;
-            overflow-x: auto !important;
-            white-space: nowrap !important;
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation: none !important;
+            transition: none !important;
+            scroll-behavior: auto !important;
         }
     }
     </style>
@@ -402,10 +455,4 @@ def apply_nature_theme():
     """Apply the Kilele theme CSS to any Streamlit page."""
     import streamlit as st
 
-    st.markdown(
-        """
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(NATURE_CSS, unsafe_allow_html=True)
+    st.html(NATURE_CSS)

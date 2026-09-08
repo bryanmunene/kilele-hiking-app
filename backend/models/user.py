@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from database import Base
 
 class User(Base):
+    password_changed_at = Column(DateTime, nullable=True)
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)

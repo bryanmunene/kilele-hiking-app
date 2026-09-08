@@ -151,6 +151,9 @@ def _add_missing_columns():
             "price": ("float", "0"),
             "max_participants": ("integer", None),
         },
+        "payments": {
+            "environment": ("string", "'sandbox'"),
+        },
     }
 
     inspector = inspect(engine)

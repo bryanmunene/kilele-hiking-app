@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import init_database
 from services import get_user_profile, get_user_stats, get_user_sessions, get_user_bookmarks, delete_bookmark, update_user_profile
-from auth import is_authenticated, get_current_user
+from auth import is_authenticated, get_current_user, restore_session_from_storage
 from cloudinary_service import cloudinary_service, uploaded_image_to_data_url
 from nature_theme import apply_nature_theme
 
@@ -19,6 +19,7 @@ init_database()
 # Page configuration
 st.set_page_config(page_title="Profile - Kilele", page_icon="👤", layout="wide")
 apply_nature_theme()
+restore_session_from_storage()
 
 # Mobile responsive styles for profile page
 st.markdown("""

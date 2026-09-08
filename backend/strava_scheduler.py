@@ -9,7 +9,7 @@ from database import SessionLocal
 from models.strava import StravaToken
 from strava_service import strava_service
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,15 +33,15 @@ def sync_all_users():
                 result = strava_service.sync_activities(
                     db=db,
                     user_id=token.user_id,
-                    days=7  # Only sync recent activities to avoid rate limits
+                    after=datetime.utcnow() - timedelta(days=7)
                 )
                 
                 logger.info(
-                    f"User {token.user_id}: Synced {result['synced']} activities, "
-                    f"matched {result['matched']} to trails"
+                    f"User {token.user_id}: Synced {len(result)} activities"
                 )
                 
             except Exception as e:
+                db.rollback()
                 logger.error(f"Failed to sync user {token.user_id}: {str(e)}")
                 continue
         
@@ -57,6 +57,8 @@ scheduler = BackgroundScheduler()
 
 def start_scheduler():
     """Start the background scheduler"""
+    if not strava_service.is_configured or scheduler.running:
+        return
     # Add job to run every hour
     scheduler.add_job(
         func=sync_all_users,
@@ -70,7 +72,7 @@ def start_scheduler():
     scheduler.add_job(
         func=sync_all_users,
         trigger='date',
-        run_date=datetime.now().replace(second=0, microsecond=0),
+        run_date=datetime.now() + timedelta(minutes=1),
         id='strava_initial_sync',
         name='Initial Strava sync on startup'
     )

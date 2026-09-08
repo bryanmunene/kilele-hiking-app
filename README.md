@@ -77,9 +77,14 @@ python deployment_check.py
 From the repository root:
 
 ```bash
+python -m pip install -r requirements-dev.txt
 python -m compileall backend frontend tests
 python -m unittest discover -s tests -v
 ```
+
+See [the browser test guide](tests/README.md) for isolated responsive checks.
+See [free integration setup](INTEGRATIONS.md) for Gmail authorization, the Daraja
+sandbox and activity-file imports without a Strava API subscription.
 
 ## Admin Access
 

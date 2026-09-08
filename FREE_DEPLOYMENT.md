@@ -69,7 +69,7 @@ CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 STRAVA_CLIENT_ID=
 STRAVA_CLIENT_SECRET=
-STRAVA_REDIRECT_URI=https://<your-streamlit-app>.streamlit.app
+STRAVA_REDIRECT_URI=https://<your-streamlit-app>.streamlit.app/Strava
 ```
 
 Render will generate `SECRET_KEY` and `STRAVA_WEBHOOK_VERIFY_TOKEN`.
@@ -136,4 +136,9 @@ After both services are live:
 
 ## Current Readiness
 
-The codebase is ready for this free staging deployment after secrets are added. Core workflows have automated checks. Strava OAuth, M-Pesa, SMTP/email, Cloudinary, and UptimeRobot are optional external integrations that need their own free-account credentials when you choose to enable them.
+Core workflows have automated checks. See [INTEGRATIONS.md](INTEGRATIONS.md) for
+account setup and external limits. Activity-file imports and database-backed
+images need no extra account. Gmail API is the domain-free email option; Render
+Free blocks standard SMTP ports. Strava Standard API access now requires a
+subscription, and production M-Pesa requires business approval. Neither is
+automatically activated by deploying this repository.

@@ -24,7 +24,11 @@ class Settings:
     
     # Email (SendGrid)
     SENDGRID_API_KEY: Optional[str] = os.getenv("SENDGRID_API_KEY")
-    FROM_EMAIL: str = os.getenv("FROM_EMAIL", "noreply@kilele.app")
+    GMAIL_CLIENT_ID: Optional[str] = os.getenv("GMAIL_CLIENT_ID")
+    GMAIL_CLIENT_SECRET: Optional[str] = os.getenv("GMAIL_CLIENT_SECRET")
+    GMAIL_REFRESH_TOKEN: Optional[str] = os.getenv("GMAIL_REFRESH_TOKEN")
+    BREVO_API_KEY: Optional[str] = os.getenv("BREVO_API_KEY")
+    FROM_EMAIL: str = os.getenv("FROM_EMAIL", "")
     SUPPORT_EMAIL: str = os.getenv("SUPPORT_EMAIL", "support@kilele.app")
     
     # Email (SMTP alternative)
@@ -40,6 +44,7 @@ class Settings:
     
     # API
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app").rstrip("/")
     CORS_ORIGINS: list = [
         origin.strip()
         for origin in os.getenv("CORS_ORIGINS", "*").split(",")
@@ -97,11 +102,13 @@ class Settings:
     @property
     def has_email(self) -> bool:
         """Check if email service is configured"""
-        return bool(self.SENDGRID_API_KEY) or all([
+        return bool(self.FROM_EMAIL) and (bool(self.SENDGRID_API_KEY or self.BREVO_API_KEY) or all([
+            self.GMAIL_CLIENT_ID, self.GMAIL_CLIENT_SECRET, self.GMAIL_REFRESH_TOKEN
+        ]) or all([
             self.SMTP_HOST,
             self.SMTP_USER,
             self.SMTP_PASSWORD
-        ])
+        ]))
     
     @property
     def has_sentry(self) -> bool:

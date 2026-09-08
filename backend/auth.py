@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 import bcrypt
@@ -37,7 +37,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc).timestamp()})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -61,7 +61,9 @@ def _get_user_from_jwt(token: str, db: Session) -> User:
         raise credentials_exception
 
     user = db.query(User).filter(User.username == username).first()
-    if user is None:
+    if user is None or not user.is_active:
+        raise credentials_exception
+    if user.password_changed_at and payload.get("iat", 0) <= user.password_changed_at.replace(tzinfo=timezone.utc).timestamp():
         raise credentials_exception
     return user
 
@@ -77,7 +79,7 @@ def _get_user_from_session_token(token: str, db: Session) -> User:
 
     session.last_used = datetime.utcnow()
     user = db.query(User).filter(User.id == session.user_id).first()
-    if user is None:
+    if user is None or not user.is_active:
         raise credentials_exception
     return user
 

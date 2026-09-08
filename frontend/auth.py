@@ -8,9 +8,14 @@ import streamlit.components.v1 as components
 import bcrypt
 import pyotp
 import secrets
+from pathlib import Path
 from database import get_db
 from models import User, SessionToken
 from datetime import datetime, timedelta
+
+_session_storage = components.declare_component(
+    "kilele_session_storage", path=str(Path(__file__).parent / "session_storage")
+)
 
 def hash_password(password: str) -> str:
     """Hash a password"""
@@ -18,7 +23,12 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    if len(plain_password.encode('utf-8')) > 72:
+        return False
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except ValueError:
+        return False
 
 def create_session_token(user_id: int, remember_me: bool = True) -> str:
     """Create a persistent session token for user"""
@@ -54,7 +64,7 @@ def get_user_by_token(token: str) -> dict:
         db.flush()
         
         user = db.query(User).filter(User.id == session.user_id).first()
-        if not user:
+        if not user or not user.is_active:
             return None
         
         return {
@@ -82,7 +92,7 @@ def authenticate_user(username: str, password: str) -> dict:
     with get_db() as db:
         user = db.query(User).filter(User.username == username).first()
         
-        if not user:
+        if not user or not user.is_active:
             return None
         
         if not verify_password(password, user.hashed_password):
@@ -219,76 +229,47 @@ def logout():
     if "session_token" in st.session_state and st.session_state.session_token:
         invalidate_token(st.session_state.session_token)
     
-    # Clear browser storage
-    components.html(
-        """
-        <script>
-            localStorage.removeItem('kilele_session_token');
-        </script>
-        """,
-        height=0,
-    )
-    
     # Clear session state
     st.session_state.authenticated = False
     st.session_state.user = None
     if "session_token" in st.session_state:
         del st.session_state.session_token
     st.session_state.clear()
+    st.session_state.storage_operation = "clear"
 
 def save_token_to_browser(token: str):
     """Save session token to browser localStorage for persistent login"""
-    components.html(
-        f"""
-        <script>
-            localStorage.setItem('kilele_session_token', '{token}');
-        </script>
-        """,
-        height=0,
-    )
+    st.session_state.storage_operation = "write"
+    st.session_state.storage_token = token
 
 def restore_session_from_storage():
-    """
-    Restore session from browser localStorage on page load
-    """
-    try:
-        # Only try to restore if not already authenticated
-        if "authenticated" not in st.session_state or not st.session_state.get("authenticated", False):
-            if "token_restore_attempted" not in st.session_state:
-                st.session_state.token_restore_attempted = False
-            
-            if not st.session_state.token_restore_attempted:
-                # JavaScript to read token from localStorage
-                token = components.html(
-                    """
-                    <script>
-                        const token = localStorage.getItem('kilele_session_token');
-                        if (token) {
-                            window.parent.postMessage({
-                                type: 'streamlit:setComponentValue',
-                                value: token
-                            }, '*');
-                        } else {
-                            window.parent.postMessage({
-                                type: 'streamlit:setComponentValue',
-                                value: ''
-                            }, '*');
-                        }
-                    </script>
-                    """,
-                    height=0,
-                )
-                
-                if token and isinstance(token, str) and len(token) > 0:
-                    st.session_state.session_token = token
-                    st.session_state.token_restore_attempted = True
-                    # is_authenticated() will validate and restore the full session
-                    is_authenticated()
-                else:
-                    st.session_state.token_restore_attempted = True
-    except Exception:
-        # Silently fail if called before Streamlit is ready
-        pass
+    """Use a bidirectional component; components.html cannot return a token."""
+    if st.session_state.get("authenticated") and st.session_state.get("session_token"):
+        current = get_user_by_token(st.session_state.session_token)
+        if current:
+            st.session_state.user = current
+        else:
+            st.session_state.authenticated = False
+            st.session_state.user = None
+            st.session_state.pop("session_token", None)
+            st.session_state.storage_operation = "clear"
+    operation = st.session_state.get("storage_operation", "read")
+    result = _session_storage(
+        operation=operation,
+        token=st.session_state.get("storage_token", ""),
+        key="session_storage",
+        default=None,
+    )
+    if not isinstance(result, dict) or result.get("operation") != operation:
+        return
+    if operation != "read":
+        st.session_state.pop("storage_operation", None)
+        st.session_state.pop("storage_token", None)
+        return
+    token = result.get("token")
+    if token and not st.session_state.get("authenticated"):
+        st.session_state.session_token = token
+        is_authenticated()
 
 def require_auth(func):
     """Decorator to require authentication"""

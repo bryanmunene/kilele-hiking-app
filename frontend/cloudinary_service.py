@@ -14,7 +14,7 @@ except ImportError:
     cloudinary = None
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageOps
 except ImportError:
     Image = None
 
@@ -191,7 +191,7 @@ def uploaded_image_to_data_url(
 
     try:
         uploaded_file.seek(0)
-        image = Image.open(uploaded_file)
+        image = ImageOps.exif_transpose(Image.open(uploaded_file))
         image = image.convert("RGB")
         image.thumbnail(max_size)
 

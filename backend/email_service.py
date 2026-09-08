@@ -1,229 +1,106 @@
-"""
-Email service for Kilele
-Supports SendGrid and SMTP
-"""
-import os
-from typing import Optional, List
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+"""Transactional mail via HTTPS APIs, with SMTP for compatible hosts."""
+import base64
+import logging
 import smtplib
+import ssl
+from email.message import EmailMessage
+from html import escape
+from urllib.parse import urlencode
+import requests
+from config import settings
 
-try:
-    from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import Mail, Email, To, Content
-    SENDGRID_AVAILABLE = True
-except ImportError:
-    SENDGRID_AVAILABLE = False
+logger = logging.getLogger(__name__)
 
-try:
-    from config import settings
-except ImportError:
-    settings = None
 
 class EmailService:
-    """Email service for sending notifications"""
-    
-    def __init__(self):
-        self.sendgrid_key = settings.SENDGRID_API_KEY if settings else None
-        self.from_email = settings.FROM_EMAIL if settings else "noreply@kilele.app"
-        self.smtp_configured = self._check_smtp()
-        self.use_sendgrid = SENDGRID_AVAILABLE and self.sendgrid_key
-    
-    def _check_smtp(self) -> bool:
-        """Check if SMTP is configured"""
-        if not settings:
-            return False
-        return all([
-            settings.SMTP_HOST,
-            settings.SMTP_USER,
-            settings.SMTP_PASSWORD
-        ])
-    
-    def send_email(
-        self,
-        to_email: str,
-        subject: str,
-        html_content: str,
-        text_content: Optional[str] = None
-    ) -> bool:
-        """
-        Send email using SendGrid or SMTP
-        
-        Args:
-            to_email: Recipient email address
-            subject: Email subject
-            html_content: HTML email body
-            text_content: Plain text email body (optional)
-            
-        Returns:
-            True if sent successfully, False otherwise
-        """
-        if self.use_sendgrid:
-            return self._send_via_sendgrid(to_email, subject, html_content, text_content)
-        elif self.smtp_configured:
-            return self._send_via_smtp(to_email, subject, html_content, text_content)
-        else:
-            print("⚠️ No email service configured")
-            return False
-    
-    def _send_via_sendgrid(
-        self,
-        to_email: str,
-        subject: str,
-        html_content: str,
-        text_content: Optional[str]
-    ) -> bool:
-        """Send email via SendGrid"""
-        try:
-            message = Mail(
-                from_email=self.from_email,
-                to_emails=to_email,
-                subject=subject,
-                html_content=html_content
-            )
-            
-            if text_content:
-                message.content = [
-                    Content("text/plain", text_content),
-                    Content("text/html", html_content)
-                ]
-            
-            sg = SendGridAPIClient(self.sendgrid_key)
-            response = sg.send(message)
-            
-            return response.status_code in [200, 201, 202]
-            
-        except Exception as e:
-            print(f"❌ SendGrid error: {e}")
-            return False
-    
-    def _send_via_smtp(
-        self,
-        to_email: str,
-        subject: str,
-        html_content: str,
-        text_content: Optional[str]
-    ) -> bool:
-        """Send email via SMTP"""
-        try:
-            message = MIMEMultipart("alternative")
-            message["Subject"] = subject
-            message["From"] = settings.SMTP_FROM
-            message["To"] = to_email
-            
-            # Add plain text and HTML parts
-            if text_content:
-                message.attach(MIMEText(text_content, "plain"))
-            message.attach(MIMEText(html_content, "html"))
-            
-            # Send email
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-                server.starttls()
-                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.send_message(message)
-            
-            return True
-            
-        except Exception as e:
-            print(f"❌ SMTP error: {e}")
-            return False
-    
-    # Specific email templates
-    
-    def send_password_reset(self, to_email: str, reset_token: str, username: str) -> bool:
-        """Send password reset email"""
-        reset_url = f"{settings.API_BASE_URL}/reset-password?token={reset_token}"
-        
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #1e3a5f;">🏔️ Kilele - Password Reset</h2>
-                    <p>Hi {username},</p>
-                    <p>You requested to reset your password. Click the button below to reset it:</p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="{reset_url}" style="background: #4a6fa5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
-                    </div>
-                    <p>Or copy this link:</p>
-                    <p style="background: #f5f5f5; padding: 10px; border-radius: 5px; word-break: break-all;">{reset_url}</p>
-                    <p style="color: #666; font-size: 14px;">This link expires in 1 hour.</p>
-                    <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email.</p>
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-                    <p style="color: #999; font-size: 12px;">Kilele Hiking App - Explore Kenya's Trails</p>
-                </div>
-            </body>
-        </html>
-        """
-        
-        text_content = f"""
-        Kilele - Password Reset
-        
-        Hi {username},
-        
-        You requested to reset your password. Click the link below to reset it:
-        
-        {reset_url}
-        
-        This link expires in 1 hour.
-        
-        If you didn't request this, please ignore this email.
-        
-        Kilele Hiking App
-        """
-        
-        return self.send_email(to_email, "Reset Your Kilele Password", html_content, text_content)
-    
-    def send_welcome_email(self, to_email: str, username: str) -> bool:
-        """Send welcome email to new users"""
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #1e3a5f;">🏔️ Welcome to Kilele!</h2>
-                    <p>Hi {username},</p>
-                    <p>Welcome to Kilele - Kenya's premier hiking trail app! We're excited to have you join our community of outdoor enthusiasts.</p>
-                    <h3 style="color: #4a6fa5;">Get Started:</h3>
-                    <ul>
-                        <li>📍 Explore 7+ amazing Kenyan trails</li>
-                        <li>🗺️ Track your hikes with GPS</li>
-                        <li>⭐ Share reviews and photos</li>
-                        <li>🏆 Earn achievements and badges</li>
-                        <li>👥 Connect with fellow hikers</li>
-                    </ul>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="{settings.API_BASE_URL}" style="background: #4a6fa5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Start Exploring</a>
-                    </div>
-                    <p>Happy hiking! 🥾</p>
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-                    <p style="color: #999; font-size: 12px;">Kilele Hiking App - Explore Kenya's Trails</p>
-                </div>
-            </body>
-        </html>
-        """
-        
-        return self.send_email(to_email, "Welcome to Kilele! 🏔️", html_content)
-    
-    def send_achievement_notification(self, to_email: str, username: str, achievement_name: str) -> bool:
-        """Send achievement unlock notification"""
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #1e3a5f;">🏆 Achievement Unlocked!</h2>
-                    <p>Hi {username},</p>
-                    <p>Congratulations! You've unlocked a new achievement:</p>
-                    <div style="background: linear-gradient(135deg, #4a6fa5 0%, #5b7ea8 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0;">
-                        <h3 style="margin: 0; font-size: 24px;">✨ {achievement_name} ✨</h3>
-                    </div>
-                    <p>Keep up the great work and continue exploring Kenya's beautiful trails!</p>
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-                    <p style="color: #999; font-size: 12px;">Kilele Hiking App - Explore Kenya's Trails</p>
-                </div>
-            </body>
-        </html>
-        """
-        
-        return self.send_email(to_email, f"🏆 Achievement Unlocked: {achievement_name}", html_content)
+    @property
+    def configured(self):
+        return settings.has_email
 
-# Global instance
+    @property
+    def provider(self):
+        if all([settings.GMAIL_CLIENT_ID, settings.GMAIL_CLIENT_SECRET, settings.GMAIL_REFRESH_TOKEN]):
+            return "gmail"
+        if settings.BREVO_API_KEY:
+            return "brevo"
+        if settings.SENDGRID_API_KEY:
+            return "sendgrid"
+        if settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD:
+            return "smtp"
+        return None
+
+    def send_email(self, to_email, subject, html_content, text_content=None):
+        if not self.configured:
+            return False
+        message = EmailMessage()
+        message["From"] = settings.FROM_EMAIL
+        message["To"] = to_email
+        message["Subject"] = subject
+        message.set_content(text_content or "Open this message in an HTML-capable email reader.")
+        message.add_alternative(html_content, subtype="html")
+        try:
+            if self.provider == "gmail":
+                token_response = requests.post("https://oauth2.googleapis.com/token", data={
+                    "client_id": settings.GMAIL_CLIENT_ID,
+                    "client_secret": settings.GMAIL_CLIENT_SECRET,
+                    "refresh_token": settings.GMAIL_REFRESH_TOKEN,
+                    "grant_type": "refresh_token",
+                }, timeout=(10, 20))
+                token_response.raise_for_status()
+                token = token_response.json()["access_token"]
+                response = requests.post("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"raw": base64.urlsafe_b64encode(message.as_bytes()).decode()}, timeout=(10, 20))
+                response.raise_for_status()
+                return bool(response.json().get("id"))
+            if self.provider == "brevo":
+                payload = {"sender": {"email": settings.FROM_EMAIL, "name": "Kilele"},
+                           "to": [{"email": to_email}], "subject": subject, "htmlContent": html_content}
+                if text_content:
+                    payload["textContent"] = text_content
+                response = requests.post("https://api.brevo.com/v3/smtp/email",
+                    headers={"api-key": settings.BREVO_API_KEY}, json=payload, timeout=(10, 20))
+                response.raise_for_status()
+                return bool(response.json().get("messageId"))
+            if self.provider == "sendgrid":
+                content = [{"type": "text/plain", "value": text_content}] if text_content else []
+                content.append({"type": "text/html", "value": html_content})
+                response = requests.post("https://api.sendgrid.com/v3/mail/send",
+                    headers={"Authorization": f"Bearer {settings.SENDGRID_API_KEY}"},
+                    json={"from": {"email": settings.FROM_EMAIL}, "personalizations": [{"to": [{"email": to_email}]}],
+                          "subject": subject, "content": content}, timeout=(10, 20))
+                return response.status_code == 202
+            transport = smtplib.SMTP_SSL if settings.SMTP_PORT == 465 else smtplib.SMTP
+            options = {"context": ssl.create_default_context()} if settings.SMTP_PORT == 465 else {}
+            with transport(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20, **options) as server:
+                if settings.SMTP_PORT != 465:
+                    server.starttls(context=ssl.create_default_context())
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                return not server.send_message(message)
+        except (requests.RequestException, smtplib.SMTPException, OSError, ValueError, KeyError):
+            # Provider responses can contain recipient addresses and OAuth credentials.
+            logger.warning("Transactional mail delivery failed using %s", self.provider)
+            return False
+
+    def send_password_reset(self, to_email, reset_token, username):
+        url = settings.FRONTEND_URL + "/Login?" + urlencode({"reset_token": reset_token})
+        html = f'<p>Hi {escape(username)},</p><p><a href="{escape(url, quote=True)}">Reset your Kilele password</a></p><p>This link expires in 30 minutes and can be used once. Ignore it if you did not request a reset.</p>'
+        return self.send_email(to_email, "Reset your Kilele password", html,
+            f"Reset your Kilele password: {url}\nThis link expires in 30 minutes. Ignore it if you did not request it.")
+
+    def send_welcome_email(self, to_email, username):
+        return self.send_email(to_email, "Welcome to Kilele",
+            f"<p>Welcome, {escape(username)}.</p><p>Your Kilele account is ready.</p>",
+            f"Welcome, {username}. Your Kilele account is ready.")
+
+    def send_achievement_notification(self, to_email, username, achievement_name):
+        return self.send_email(to_email, "Kilele achievement unlocked",
+            f"<p>Hi {escape(username)},</p><p>You earned {escape(achievement_name)}.</p>")
+    
+    def send_booking_confirmation(self, to_email, hike_name, reference):
+        return self.send_email(to_email, "Kilele booking confirmed",
+            f"<p>Your booking for {escape(hike_name)} is confirmed.</p><p>Reference: {escape(reference)}</p>",
+            f"Your booking for {hike_name} is confirmed. Reference: {reference}")
+
+
 email_service = EmailService()

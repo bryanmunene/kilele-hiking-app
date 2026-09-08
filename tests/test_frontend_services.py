@@ -17,7 +17,7 @@ class FrontendServiceContractTests(unittest.TestCase):
         database_path = Path(cls.tempdir.name) / "kilele-test.db"
         os.environ["DATABASE_URL"] = f"sqlite:///{database_path.as_posix()}"
         sys.path.insert(0, str(FRONTEND_DIR))
-        for module_name in ["database", "models", "services", "config", "auth", "main"]:
+        for module_name in ["database", "models", "services", "config", "auth", "main", "activity_import", "cloudinary_service"]:
             sys.modules.pop(module_name, None)
 
         global database, models, services
@@ -186,3 +186,48 @@ class FrontendServiceContractTests(unittest.TestCase):
         search_results = services.search_users("nesh", exclude_user_id=other_user_id)
         self.assertEqual(search_results[0]["username"], "Nesh")
         self.assertEqual(services.search_users("nesh", exclude_user_id=user_id), [])
+
+    def test_activity_import_saves_completed_session_without_trail_and_deduplicates(self):
+        from activity_import import import_activity
+        user_id, _, _ = self.seed_users_and_hike()
+        content = b'''<gpx version="1.1" creator="test"><trk><trkseg>
+          <trkpt lat="-1.0" lon="36.0"><ele>100</ele><time>2026-08-01T10:00:00Z</time></trkpt>
+          <trkpt lat="-1.01" lon="36.01"><ele>150</ele><time>2026-08-01T11:00:00Z</time></trkpt>
+        </trkseg></trk></gpx>'''
+        first = import_activity(user_id, "walk.gpx", content)
+        duplicate = import_activity(user_id, "renamed.gpx", content)
+        self.assertFalse(first["duplicate"])
+        self.assertTrue(duplicate["duplicate"])
+        self.assertEqual(first["session_id"], duplicate["session_id"])
+        with database.get_db() as db:
+            session = db.get(models.HikeSession, first["session_id"])
+            self.assertIsNone(session.hike_id)
+            self.assertFalse(session.is_active)
+            self.assertEqual(session.status, "completed")
+            self.assertGreater(session.distance_covered_km, 1)
+            self.assertEqual(session.duration_hours, 1)
+            self.assertEqual(session.elevation_gain_m, 50)
+
+    def test_activity_import_rejects_invalid_empty_and_oversize_files(self):
+        from activity_import import import_activity
+        user_id, _, _ = self.seed_users_and_hike()
+        for content in [b"", b"not a gpx file", b"<gpx></gpx>", b"x" * (10 * 1024 * 1024 + 1)]:
+            with self.assertRaises(ValueError):
+                import_activity(user_id, "walk.gpx", content)
+        with database.get_db() as db:
+            self.assertEqual(db.query(models.HikeSession).count(), 0)
+
+    def test_phone_photo_orientation_and_invalid_image_fallback(self):
+        import base64
+        import io
+        from PIL import Image
+        from cloudinary_service import uploaded_image_to_data_url
+        source = Image.new("RGB", (80, 40), "red")
+        exif = source.getexif()
+        exif[274] = 6
+        upload = io.BytesIO()
+        source.save(upload, format="JPEG", exif=exif)
+        encoded = uploaded_image_to_data_url(upload)
+        decoded = Image.open(io.BytesIO(base64.b64decode(encoded.split(",", 1)[1])))
+        self.assertEqual(decoded.size, (40, 80))
+        self.assertIsNone(uploaded_image_to_data_url(io.BytesIO(b"not an image")))

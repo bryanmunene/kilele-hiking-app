@@ -8,13 +8,14 @@ import base64
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import init_database
-from auth import is_authenticated, get_current_user, setup_2fa, verify_2fa_code, enable_2fa, disable_2fa
+from auth import is_authenticated, get_current_user, setup_2fa, verify_2fa_code, enable_2fa, disable_2fa, restore_session_from_storage
 from nature_theme import apply_nature_theme
 
 init_database()
 
 st.set_page_config(page_title="2FA Setup - Kilele", page_icon="🔐", layout="wide")
 apply_nature_theme()
+restore_session_from_storage()
 
 # Check authentication
 if not is_authenticated():

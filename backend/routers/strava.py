@@ -13,7 +13,10 @@ from auth import get_current_user
 from strava_service import strava_service
 from models.user import User
 from models.strava import StravaActivity, StravaToken
+from auth_actions import issue_action, consume_action
 import os
+import hmac
+from database import get_db_context
 
 router = APIRouter(prefix="/api/strava", tags=["strava"])
 
@@ -24,7 +27,8 @@ class StravaConnectResponse(BaseModel):
 
 class StravaCallbackRequest(BaseModel):
     code: str
-    state: str = None
+    state: str
+    scope: str = ""
 
 
 class StravaActivityResponse(BaseModel):
@@ -48,10 +52,12 @@ class StravaStatsResponse(BaseModel):
     matched_trails: int
     is_connected: bool
     last_synced: str = None
+    sync_enabled: bool = False
+    configured: bool = False
 
 
 @router.get("/connect", response_model=StravaConnectResponse)
-async def connect_strava(current_user: User = Depends(get_current_user)):
+def connect_strava(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Get Strava OAuth authorization URL
     """
@@ -62,10 +68,12 @@ async def connect_strava(current_user: User = Depends(get_current_user)):
                 detail="Strava integration is not configured. Please contact administrator to set up Strava API credentials."
             )
         
-        state = f"user_{current_user.id}"
+        state = issue_action(db, current_user.id, "strava")
         auth_url = strava_service.get_authorization_url(state=state)
         
         return {"authorization_url": auth_url}
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
@@ -73,7 +81,7 @@ async def connect_strava(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/callback")
-async def strava_callback(
+def strava_callback(
     request: StravaCallbackRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -82,10 +90,13 @@ async def strava_callback(
     Handle OAuth callback from Strava
     """
     try:
+        consume_action(db, request.state, "strava", current_user.id)
+        db.commit()
         token = strava_service.exchange_code_for_token(
             code=request.code,
             db=db,
-            user_id=current_user.id
+            user_id=current_user.id,
+            scope=request.scope,
         )
         
         return {
@@ -99,7 +110,7 @@ async def strava_callback(
 
 
 @router.post("/sync")
-async def sync_activities(
+def sync_activities(
     background_tasks: BackgroundTasks,
     days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
@@ -130,6 +141,8 @@ async def sync_activities(
             "message": f"Synced {len(activities)} activities from the last {days} days"
         }
     
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -184,18 +197,21 @@ async def get_stats(
             "total_elevation_m": 0,
             "total_kudos": 0,
             "matched_trails": 0,
-            "is_connected": False
+            "is_connected": False,
+            "configured": strava_service.is_configured,
         }
     
     stats = strava_service.get_user_stats(current_user.id, db)
     stats['is_connected'] = True
     stats['last_synced'] = token.last_synced.isoformat() if token.last_synced else None
+    stats['sync_enabled'] = bool(token.sync_enabled)
+    stats['configured'] = strava_service.is_configured
     
     return stats
 
 
 @router.delete("/disconnect")
-async def disconnect_strava(
+def disconnect_strava(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -214,7 +230,7 @@ async def disconnect_strava(
 
 
 # Webhook endpoints
-WEBHOOK_VERIFY_TOKEN = os.getenv("STRAVA_WEBHOOK_VERIFY_TOKEN", "kilele_hiking_app_2026")
+WEBHOOK_VERIFY_TOKEN = os.getenv("STRAVA_WEBHOOK_VERIFY_TOKEN", "")
 
 
 @router.get("/webhook")
@@ -225,7 +241,7 @@ async def webhook_verify(request: Request):
     params = dict(request.query_params)
     
     # Strava sends: hub.mode, hub.challenge, hub.verify_token
-    if params.get("hub.verify_token") == WEBHOOK_VERIFY_TOKEN:
+    if WEBHOOK_VERIFY_TOKEN and params.get("hub.verify_token") == WEBHOOK_VERIFY_TOKEN:
         return {"hub.challenge": params.get("hub.challenge")}
     
     raise HTTPException(status_code=403, detail="Invalid verify token")
@@ -241,6 +257,8 @@ async def webhook_event(
     Handle webhook events from Strava
     Events: create, update, delete activities
     """
+    if not WEBHOOK_VERIFY_TOKEN or not hmac.compare_digest(request.query_params.get("token", ""), WEBHOOK_VERIFY_TOKEN):
+        raise HTTPException(403, "Invalid webhook token")
     try:
         data = await request.json()
         
@@ -271,17 +289,15 @@ async def webhook_event(
         if aspect_type == "create":
             # Sync new activity in background
             background_tasks.add_task(
-                strava_service.sync_activities,
+                sync_webhook_activities,
                 token.user_id,
-                db,
-                datetime.utcnow() - timedelta(hours=1),
-                limit=5
             )
         
         elif aspect_type == "delete":
             # Delete activity from our database
             activity = db.query(StravaActivity).filter(
-                StravaActivity.strava_activity_id == str(activity_id)
+                StravaActivity.strava_activity_id == str(activity_id),
+                StravaActivity.user_id == token.user_id,
             ).first()
             
             if activity:
@@ -291,11 +307,8 @@ async def webhook_event(
         elif aspect_type == "update":
             # Re-sync activity
             background_tasks.add_task(
-                strava_service.sync_activities,
+                sync_webhook_activities,
                 token.user_id,
-                db,
-                datetime.utcnow() - timedelta(hours=1),
-                limit=5
             )
         
         return {"status": "processed"}
@@ -303,6 +316,11 @@ async def webhook_event(
     except Exception as e:
         print(f"Webhook error: {e}")
         return {"status": "error", "message": str(e)}
+
+
+def sync_webhook_activities(user_id):
+    with get_db_context() as db:
+        strava_service.sync_activities(user_id, db, datetime.utcnow() - timedelta(days=7))
 
 
 @router.post("/toggle-autosync")

@@ -96,6 +96,7 @@ def _default_sql(default: str | None) -> str:
 def _add_missing_columns():
     migrations = {
         "users": {
+            "password_changed_at": ("datetime", None),
             "bio": ("text", None),
             "experience_level": ("string", "'Beginner'"),
             "is_admin": ("boolean", "false"),
@@ -139,6 +140,9 @@ def _add_missing_columns():
         "reviews": {
             "photos": ("json", None),
             "trail_condition": ("string", None),
+        },
+        "payments": {
+            "environment": ("string", "'sandbox'"),
         },
     }
 
@@ -194,7 +198,7 @@ def _widen_image_columns():
 # Initialize database (create tables)
 def init_database():
     """Create all database tables"""
-    from models import user, hike, review, achievement, activity, bookmark, follow, hike_session, message, session_token
+    from models import user, hike, review, achievement, activity, bookmark, follow, hike_session, message, session_token, auth_action, strava, booking
     Base.metadata.create_all(bind=engine)
     _add_missing_columns()
     _widen_image_columns()

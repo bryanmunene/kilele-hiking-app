@@ -25,6 +25,8 @@ services:
       - key: API_BASE_URL
         value: https://kilele-hiking-api.onrender.com
       - key: CORS_ORIGINS
-        value: https://kilele-hiking-app.streamlit.app
+        value: https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app
+      - key: FRONTEND_URL
+        value: https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app
       - key: STRAVA_WEBHOOK_VERIFY_TOKEN
         generateValue: true

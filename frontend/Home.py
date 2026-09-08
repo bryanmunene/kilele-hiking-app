@@ -17,7 +17,7 @@ st.set_page_config(
     page_title="Kilele Explorers",
     page_icon="🏔️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 apply_nature_theme()
 restore_session_from_storage()
@@ -93,9 +93,16 @@ HOME_CSS = """
             font-size: 1rem;
         }
     }
+    @container kilele-page (max-width: 640px) {
+        .st-key-trail_summary [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            flex: 1 1 calc(50% - 0.5rem) !important;
+            width: calc(50% - 0.5rem) !important;
+        }
+        .st-key-trail_summary [data-testid="stMetricValue"] { font-size: 1.4rem; }
+    }
     </style>
 """
-st.markdown(HOME_CSS, unsafe_allow_html=True)
+st.html(HOME_CSS)
 
 
 def _escape(value) -> str:
@@ -301,7 +308,7 @@ def main():
     st.markdown("<div class='home-kicker'>Kenyan trail planner</div>", unsafe_allow_html=True)
     st.title("Kilele Explorers")
     st.markdown(
-        "<p class='home-subtitle'>Find a trail, compare effort, check conditions, and save your next hike without digging through the sidebar first.</p>",
+        "<p class='home-subtitle'>Kenya's forests, ridgelines and mountain trails.</p>",
         unsafe_allow_html=True,
     )
 
@@ -338,37 +345,35 @@ def main():
 
     visible_hikes = filtered_and_sorted_hikes(hikes, search_query, distance_range, sort_by)
 
-    stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
-    with stats_col1:
-        st.metric("Matching trails", len(visible_hikes))
-    with stats_col2:
-        avg_distance = sum(h["distance_km"] for h in visible_hikes) / len(visible_hikes) if visible_hikes else 0
-        st.metric("Avg distance", f"{avg_distance:.1f} km")
-    with stats_col3:
-        avg_duration = sum(h["estimated_duration_hours"] for h in visible_hikes) / len(visible_hikes) if visible_hikes else 0
-        st.metric("Avg duration", f"{avg_duration:.1f} hrs")
-    with stats_col4:
-        hard_count = sum(1 for h in visible_hikes if h["difficulty"] in {"Hard", "Extreme"})
-        st.metric("Hard+ routes", hard_count)
+    with st.container(key="trail_summary"):
+        stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
+        with stats_col1:
+            st.metric("Matching trails", len(visible_hikes))
+        with stats_col2:
+            avg_distance = sum(h["distance_km"] for h in visible_hikes) / len(visible_hikes) if visible_hikes else 0
+            st.metric("Avg distance", f"{avg_distance:.1f} km")
+        with stats_col3:
+            avg_duration = sum(h["estimated_duration_hours"] for h in visible_hikes) / len(visible_hikes) if visible_hikes else 0
+            st.metric("Avg duration", f"{avg_duration:.1f} hrs")
+        with stats_col4:
+            hard_count = sum(1 for h in visible_hikes if h["difficulty"] in {"Hard", "Extreme"})
+            st.metric("Hard+ routes", hard_count)
 
     if not visible_hikes:
         st.info("No trails match those filters. Try widening the distance or choosing all difficulties.")
         return
 
-    st.markdown("<div class='quick-strip'>", unsafe_allow_html=True)
-    st.markdown("#### Plan faster")
+    st.markdown("#### Your next hike")
     action_col1, action_col2, action_col3 = st.columns(3)
     with action_col1:
-        if st.button("Open trail map", width="stretch"):
+        if st.button("Open trail map", icon=":material/map:", width="stretch"):
             st.switch_page("pages/1_🗺️_Map_View.py")
     with action_col2:
-        if st.button("Track a hike", width="stretch"):
+        if st.button("Track a hike", icon=":material/route:", width="stretch"):
             st.switch_page("pages/5_📍_Track_Hike.py")
     with action_col3:
-        if st.button("Plan a future hike", width="stretch"):
+        if st.button("Plan a future hike", icon=":material/event:", width="stretch"):
             st.switch_page("pages/20_🗓️_Plan_Hike.py")
-    st.markdown("</div>", unsafe_allow_html=True)
-
     render_featured_trail(visible_hikes)
 
     st.markdown("## Trail catalogue")
