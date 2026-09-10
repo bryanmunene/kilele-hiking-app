@@ -123,8 +123,12 @@ class BackupService:
             elif format_name == b"postgres" and target.get_backend_name() == "postgresql":
                 engine = create_engine(target_url)
                 try:
-                    if inspect(engine).get_table_names(schema="public"):
-                        raise ValueError("PostgreSQL restore target must be empty.")
+                    with engine.begin() as connection:
+                        if inspect(connection).get_table_names(schema="public"):
+                            raise ValueError("PostgreSQL restore target must be empty.")
+                        # --schema=public dumps recreate public. No CASCADE: views,
+                        # functions or other existing objects also block this step.
+                        connection.exec_driver_sql("DROP SCHEMA IF EXISTS public")
                 finally:
                     engine.dispose()
                 with snapshot.open("rb") as source:
