@@ -7,6 +7,10 @@ from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 from contextlib import contextmanager
 import os
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parents[1] / "backend"))
 
 # Import config
 try:
@@ -93,6 +97,8 @@ def _add_missing_columns():
     """Apply small, backwards-compatible migrations for shared deployments."""
     migrations = {
         "users": {
+            "email_verified": ("boolean", "false"),
+            "password_changed_at": ("datetime", None),
             "bio": ("text", None),
             "experience_level": ("string", "'Beginner'"),
             "is_admin": ("boolean", "false"),
@@ -181,6 +187,7 @@ def _widen_image_columns():
     targets = {
         "users": ["profile_picture"],
         "hikes": ["image_url"],
+        "review_photos": ["photo_url"],
     }
     inspector = inspect(engine)
     existing_tables = set(inspector.get_table_names())
@@ -205,12 +212,22 @@ def _widen_image_columns():
                 )
 
 
-def init_database():
+def _initialize_unlocked():
     """Initialize database tables and apply lightweight local migrations."""
     from models import Base as ModelsBase
     ModelsBase.metadata.create_all(bind=engine)
+    from kilele_core.security import metadata as security_metadata
+    from kilele_core import operations
+    security_metadata.create_all(bind=engine)
     _add_missing_columns()
     _widen_image_columns()
+
+
+def init_database():
+    from kilele_core.schema import migration_lock, allow_unlinked_activities
+    with migration_lock(engine):
+        _initialize_unlocked()
+        allow_unlinked_activities(engine)
 
 @st.cache_resource
 def get_engine():

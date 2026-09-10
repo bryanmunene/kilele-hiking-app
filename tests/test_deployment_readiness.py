@@ -45,8 +45,10 @@ class DeploymentReadinessTests(unittest.TestCase):
         blueprint = (ROOT / "render.yaml").read_text(encoding="utf-8")
         self.assertIn("runtime: python", blueprint)
         self.assertIn("plan: free", blueprint)
-        self.assertIn("rootDir: backend", blueprint)
-        self.assertIn("healthCheckPath: /health", blueprint)
+        self.assertNotIn("rootDir: backend", blueprint)
+        self.assertIn("requirements-hosted.txt", blueprint)
+        self.assertIn("python scripts/serve_hosted.py", blueprint)
+        self.assertIn("healthCheckPath: /_ready", blueprint)
         self.assertIn("DATABASE_URL", blueprint)
         self.assertIn("sync: false", blueprint)
 

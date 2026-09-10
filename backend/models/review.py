@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, ForeignKey, Boolean, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -17,6 +17,7 @@ class Review(Base):
     conditions = Column(Text)  # Trail conditions when visited
     visited_date = Column(DateTime(timezone=True))
     helpful_count = Column(Integer, default=0)
+    photos_data = Column("photos", JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -30,7 +31,7 @@ class ReviewPhoto(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     review_id = Column(Integer, ForeignKey("reviews.id"), nullable=False)
-    photo_url = Column(String(255), nullable=False)
+    photo_url = Column(Text, nullable=False)
     caption = Column(String(500))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

@@ -145,6 +145,13 @@ class MpesaService:
                 if registration:
                     registration.payment_status = "paid"
                     registration.status = "confirmed"
+                    from kilele_core.operations import enqueue
+                    from models.booking import PlannedHike
+                    from models.hike import Hike
+                    planned = db.get(PlannedHike, registration.planned_hike_id)
+                    trail = db.get(Hike, planned.hike_id)
+                    enqueue(db, f"payment:{payment.id}", registration.user_id, "booking",
+                        {"hike": trail.name, "reference": registration.id})
         elif code in {"1", "1032", "1037", "2001", "1025", "1019", "9999"}:
             payment.status = "cancelled" if code == "1032" else "failed"
         payment.updated_at = datetime.utcnow()

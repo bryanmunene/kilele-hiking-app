@@ -48,8 +48,10 @@ class User(Base):
     two_fa_enabled = Column(Boolean, default=False)
     two_factor_secret = Column(String)
     two_factor_enabled = Column(Boolean, default=False)
+    email_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
+    password_changed_at = Column(DateTime)
     
     # Relationships
     reviews = relationship("Review", back_populates="user")

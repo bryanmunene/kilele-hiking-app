@@ -140,25 +140,17 @@ async def upload_review_photo(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
     
-    # Validate file type
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    
-    file_extension = Path(file.filename).suffix
-    unique_filename = f"review_{review_id}_{uuid.uuid4()}{file_extension}"
+    from kilele_core.images import image_data_url
+    if db.query(ReviewPhoto).filter_by(review_id=review_id).count() >= 5:
+        raise HTTPException(422, "A review can have at most five photos")
+    try:
+        photo_url = image_data_url(await file.read(5 * 1024 * 1024 + 1))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    finally:
+        await file.close()
+    review.photos_data = [*(review.photos_data or []), photo_url]
 
-    photo_url = None
-    if cloudinary_service.enabled:
-        photo_url = cloudinary_service.upload_review_photo(file.file, review_id)
-
-    if not photo_url:
-        file_path = Path("static/review_photos") / unique_filename
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file.file.seek(0)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        photo_url = f"/static/review_photos/{unique_filename}"
-    
     # Create photo record
     photo = ReviewPhoto(
         review_id=review_id,

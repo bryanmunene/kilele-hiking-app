@@ -20,6 +20,7 @@ class User(Base):
     two_fa_enabled = Column(Boolean, default=False)
     two_fa_secret = Column(String(32), nullable=True)  # Secret for 2FA
     two_factor_enabled = Column(Boolean, default=False)
+    email_verified = Column(Boolean, default=False)
     two_factor_secret = Column(String(32), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_login = Column(DateTime(timezone=True))

@@ -1,0 +1,4 @@
+-r backend/requirements.txt
+-r frontend/requirements.txt
+fastapi-proxy-lib>=0.3,<0.4
+httpx>=0.28,<0.29

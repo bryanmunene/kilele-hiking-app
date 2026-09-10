@@ -7,11 +7,10 @@ services:
     name: kilele-hiking-api
     runtime: python
     plan: free
-    rootDir: backend
-    region: oregon
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
+    region: virginia
+    buildCommand: pip install -r requirements-hosted.txt
+    startCommand: python scripts/serve_hosted.py
+    healthCheckPath: /_ready
     autoDeployTrigger: commit
     envVars:
       - key: ENVIRONMENT
@@ -25,8 +24,8 @@ services:
       - key: API_BASE_URL
         value: https://kilele-hiking-api.onrender.com
       - key: CORS_ORIGINS
-        value: https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app
+        value: https://kilele-hiking-api.onrender.com,https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app
       - key: FRONTEND_URL
-        value: https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app
+        value: https://kilele-hiking-api.onrender.com
       - key: STRAVA_WEBHOOK_VERIFY_TOKEN
         generateValue: true

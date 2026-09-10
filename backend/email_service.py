@@ -102,5 +102,13 @@ class EmailService:
             f"<p>Your booking for {escape(hike_name)} is confirmed.</p><p>Reference: {escape(reference)}</p>",
             f"Your booking for {hike_name} is confirmed. Reference: {reference}")
 
+    def send_booking_cancellation(self, to_email, hike_name, reference):
+        text = f"Your booking for {hike_name} has been cancelled. Reference: {reference}. Contact kileleexplorers@gmail.com with questions."
+        return self.send_email(to_email, "Kilele booking cancelled", f"<p>{escape(text)}</p>", text)
+
+    def send_verification(self, to_email, token):
+        url = settings.FRONTEND_URL + "/Login?" + urlencode({"verify_token": token})
+        return self.send_email(to_email, "Verify your Kilele email", f'<p><a href="{escape(url, quote=True)}">Verify email address</a></p><p>This link expires in 30 minutes.</p>', f"Verify your email: {url}")
+
 
 email_service = EmailService()

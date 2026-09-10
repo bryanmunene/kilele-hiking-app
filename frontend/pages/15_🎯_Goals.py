@@ -85,7 +85,7 @@ with tab1:
                 
                 with col_b:
                     if st.button("Update", key=f"update_{goal['id']}", type="primary"):
-                        result = update_goal_progress(goal['id'], new_value)
+                        result = update_goal_progress(goal['id'], new_value, user_id=user['id'])
                         if result:
                             st.success("✅ Progress updated!")
                             st.rerun()

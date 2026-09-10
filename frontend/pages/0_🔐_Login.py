@@ -3,6 +3,7 @@ from auth import (
     authenticate_user, register_user, verify_2fa_code, is_authenticated,
     get_current_user, logout, create_session_token, save_token_to_browser,
     restore_session_from_storage,
+    TooManyAttempts, TwoFactorRequired,
 )
 from api_client import api_request
 from database import init_database
@@ -12,6 +13,12 @@ st.set_page_config(page_title="Sign in - Kilele", page_icon="🔐", layout="wide
 init_database()
 apply_nature_theme()
 restore_session_from_storage()
+
+if st.query_params.get("verify_token"):
+    token = st.query_params["verify_token"]
+    st.query_params.clear()
+    result = api_request("POST", "/api/v1/auth/verify-email", json={"token": token})
+    st.error(result["error"]) if result.get("error") else st.success(result["message"])
 
 if st.query_params.get("reset_token"):
     st.session_state.password_reset_token = st.query_params["reset_token"]
@@ -68,14 +75,16 @@ with st.container(key="auth_form"):
                 st.error("Enter your username and password.")
             else:
                 with st.spinner("Signing in..."):
-                    user = authenticate_user(username.strip(), password)
+                    try:
+                        user = authenticate_user(username.strip(), password, otp)
+                    except TwoFactorRequired:
+                        st.session_state.needs_2fa = True
+                        st.rerun()
+                    except TooManyAttempts as exc:
+                        st.error(str(exc))
+                        st.stop()
                 if not user:
                     st.error("Invalid username or password.")
-                elif user.get("two_factor_enabled") and not otp:
-                    st.session_state.needs_2fa = True
-                    st.rerun()
-                elif user.get("two_factor_enabled") and not verify_2fa_code(user["id"], otp):
-                    st.error("Invalid authenticator code.")
                 else:
                     token = create_session_token(user["id"], remember)
                     st.session_state.update(authenticated=True, user=user, session_token=token, needs_2fa=False)

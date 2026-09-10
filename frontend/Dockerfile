@@ -10,6 +10,7 @@ COPY frontend/requirements.txt ./requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY frontend/ ./
+COPY backend/kilele_core/ ./kilele_core/
 
 EXPOSE 8501
 

@@ -10,12 +10,7 @@ from database import init_database
 from services import get_all_hikes, create_session, get_user_sessions
 from auth import is_authenticated, get_current_user, restore_session_from_storage
 from nature_theme import apply_nature_theme
-from offline_cache import (
-    prepare_offline_hike_ui, 
-    show_offline_indicator, 
-    OfflineCache,
-    check_internet_connection
-)
+import json
 
 init_database()
 
@@ -29,11 +24,8 @@ if not is_authenticated():
     st.info("👈 Navigate to the Login page to access this feature")
     st.stop()
 
-st.title("📍 Track Your Hike")
-st.markdown("Start tracking your adventure in real-time!")
-
-# Show offline indicator if no internet
-is_offline = show_offline_indicator()
+st.title("Hike log")
+st.caption("Manual activity records. Continuous GPS tracking and automatic emergency alerts are not available.")
 
 st.markdown("---")
 
@@ -76,10 +68,16 @@ def update_session(session_id, data):
         from database import get_db
         from models import HikeSession
         with get_db() as db:
-            session = db.query(HikeSession).filter(HikeSession.id == session_id).first()
+            user = get_current_user()
+            session = db.query(HikeSession).filter(HikeSession.id == session_id, HikeSession.user_id == user["id"]).first()
             if session:
                 for key, value in data.items():
-                    setattr(session, key, value)
+                    if key in {"distance_covered_km", "elevation_gain_m", "duration_hours", "notes", "status", "ended_at", "rating"}:
+                        setattr(session, key, value)
+                session.duration_minutes = round((session.duration_hours or 0) * 60)
+                if session.status == "completed":
+                    session.is_active = False
+                    session.completed_at = session.ended_at
                 db.commit()
                 return True, {"id": session.id}
             return False, "Session not found"
@@ -136,6 +134,7 @@ if active_sessions:
                     )
                 
                 notes = st.text_area("Notes", value=session.get('notes', '') or '')
+                rating = st.slider("Rating", 1, 5, int(session.get("rating") or 3))
                 
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -161,8 +160,6 @@ if active_sessions:
                 
                 if complete_btn:
                     # Complete the hike
-                    st.write("### ⭐ Rate Your Hike")
-                    rating = st.slider("Rating", 1, 5, 3)
                     
                     complete_data = {
                         "distance_covered_km": new_distance,
@@ -170,7 +167,8 @@ if active_sessions:
                         "duration_hours": new_duration,
                         "notes": notes,
                         "status": "completed",
-                        "ended_at": datetime.utcnow()
+                        "ended_at": datetime.utcnow(),
+                        "rating": rating
                     }
                     
                     success, result = update_session(session['id'], complete_data)
@@ -185,7 +183,7 @@ if active_sessions:
         st.markdown("---")
 
 else:
-    st.info("👋 No active hikes. Start tracking a new adventure below!")
+    st.info("👋 No active hikes. Start a new hike log below.")
 
 # Start New Hike
 st.write("### 🚀 Start New Hike")
@@ -224,10 +222,10 @@ if hikes:
                 st.write(f"**Best Season:** {hike['best_season']}")
             
             with col2:
-                if st.button(f"▶️ Start Tracking", key=f"start_{hike['id']}", width="stretch"):
+                if st.button("Start hike log", key=f"start_{hike['id']}", width="stretch"):
                     success, result = start_hike(hike['id'])
                     if success:
-                        st.success(f"✅ Started tracking {hike['name']}!")
+                        st.success(f"✅ Started hike log for {hike['name']}!")
                         time.sleep(1)
                         st.rerun()
                     else:
@@ -235,23 +233,7 @@ if hikes:
             
             # Offline preparation feature
             st.markdown("---")
-            prepare_offline_hike_ui(hike['id'], hike)
+            st.download_button("Download trail details", json.dumps(hike, default=str, indent=2),
+                f"kilele-trail-{hike['id']}.json", "application/json", key=f"download_{hike['id']}", icon=":material/download:")
 else:
     st.warning("No hikes available")
-
-# Instructions
-st.markdown("---")
-st.info("""
-### 📱 How to Track Your Hike
-
-1. **Start Tracking:** Select a trail and click "Start Tracking"
-2. **Update Progress:** Periodically update your GPS location, distance, and time
-3. **Add Notes:** Record interesting observations or challenges
-4. **Complete:** When finished, mark the hike as complete and rate your experience
-
-💡 **Tips:**
-- Update your location at key points (summit, waterfall, viewpoints)
-- Track distance using your phone's GPS or fitness app
-- Take breaks and stay hydrated!
-- Share your adventure on social media 📸
-""")

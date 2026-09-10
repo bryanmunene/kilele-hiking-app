@@ -25,6 +25,8 @@ def clear_backend_modules():
         "auth_actions",
         "mpesa_service",
         "email_service",
+        "notification_worker",
+        "hosted",
     ]:
         sys.modules.pop(module_name, None)
     for module_name in list(sys.modules):

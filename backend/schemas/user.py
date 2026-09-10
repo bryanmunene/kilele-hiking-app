@@ -8,11 +8,12 @@ class UserBase(BaseModel):
     full_name: Optional[str] = Field(None, max_length=100)
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8, max_length=72)
 
 class UserLogin(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=50)
+    password: str = Field(max_length=72)
+    two_fa_token: str = Field(default="", max_length=6)
 
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)

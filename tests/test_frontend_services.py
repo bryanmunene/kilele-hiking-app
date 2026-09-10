@@ -34,8 +34,144 @@ class FrontendServiceContractTests(unittest.TestCase):
 
     def setUp(self):
         with database.get_db() as db:
+            from kilele_core.security import metadata
+            for table in reversed(metadata.sorted_tables):
+                db.execute(table.delete())
             for table in reversed(models.Base.metadata.sorted_tables):
                 db.execute(table.delete())
+
+    def seed_booking(self, capacity=1):
+        owner, guest, trail = self.seed_users_and_hike()
+        with database.get_db() as db:
+            hike = models.PlannedHike(user_id=owner, hike_id=trail,
+                planned_date=datetime.utcnow() + timedelta(days=10), price=0,
+                max_participants=capacity)
+            db.add(hike)
+            db.flush()
+            return owner, guest, hike.id
+
+    def test_booking_cancellation_releases_capacity_and_rebooking_reuses_record(self):
+        from sqlalchemy import select
+        from kilele_core.operations import outbox
+        owner, guest, hike = self.seed_booking()
+        first = services.register_for_hike(guest, hike, "254700000000")
+        self.assertNotIn("error", first)
+        self.assertIn("error", services.register_for_hike(owner, hike, "254700000001"))
+        self.assertIn("error", services.cancel_registration(owner, first["registration_id"]))
+        self.assertNotIn("error", services.cancel_registration(guest, first["registration_id"]))
+        self.assertNotIn("error", services.cancel_registration(guest, first["registration_id"]))
+        again = services.register_for_hike(guest, hike, "254700000002")
+        self.assertEqual(again["registration_id"], first["registration_id"])
+        with database.get_db() as db:
+            self.assertEqual(db.query(models.HikeRegistration).count(), 1)
+            self.assertEqual(len(db.execute(select(outbox)).all()), 3)
+
+    def test_organizer_cancellation_preserves_ledger_and_notifies_once(self):
+        from sqlalchemy import select
+        from kilele_core.operations import outbox
+        owner, guest, hike = self.seed_booking()
+        first = services.register_for_hike(guest, hike, "254700000000")
+        self.assertIn("error", services.delete_planned_hike(hike, owner))
+        self.assertIn("error", services.update_planned_hike_status(hike, "cancelled", guest))
+        self.assertIn("error", services.update_planned_hike_status(hike, "completed", owner))
+        self.assertIn("error", services.update_planned_hike_status(hike, "planned", owner, changes={"price": 100}))
+        self.assertNotIn("error", services.update_planned_hike_status(hike, "cancelled", owner))
+        services.update_planned_hike_status(hike, "cancelled", owner)
+        with database.get_db() as db:
+            self.assertEqual(db.get(models.HikeRegistration, first["registration_id"]).status, "cancelled")
+            self.assertEqual(len(db.execute(select(outbox)).all()), 2)
+        self.assertNotIn("error", services.update_planned_hike_status(hike, "planned", owner))
+        with database.get_db() as db:
+            self.assertEqual(db.get(models.HikeRegistration, first["registration_id"]).status, "cancelled")
+
+    def test_account_export_and_erasure_do_not_affect_another_member(self):
+        import json
+        from kilele_core.operations import export_account, erase_account, submit_report
+        owner, guest, hike = self.seed_booking()
+        registration = services.register_for_hike(guest, hike, "254700000000")
+        conversation = services.create_conversation([owner, guest])
+        services.send_message(guest, conversation["id"], "Private meeting details")
+        services.send_message(owner, conversation["id"], "Other member message")
+        with database.get_db() as db:
+            db.add(models.SessionToken(user_id=guest, token="private-session-secret", expires_at=datetime.utcnow() + timedelta(days=1)))
+            db.add(models.Payment(user_id=guest, registration_id=registration["registration_id"], amount=100, phone_number="254700000000"))
+            submit_report(db, guest, "support", "Please help with my booking.")
+        with database.get_db() as db:
+            user = db.get(models.User, guest)
+            exported = json.dumps(export_account(db, user), default=str)
+            self.assertIn("Private meeting details", exported)
+            self.assertNotIn("Other member message", exported)
+            self.assertNotIn("private-session-secret", exported)
+            self.assertNotIn("hashed_password", exported)
+            erase_account(db, user)
+        with database.get_db() as db:
+            user = db.get(models.User, guest)
+            self.assertFalse(user.is_active)
+            self.assertEqual(user.full_name, "Deleted account")
+            self.assertEqual(db.query(models.SessionToken).filter_by(user_id=guest).count(), 0)
+            self.assertEqual(db.query(models.Payment).one().phone_number, "")
+            self.assertEqual(db.get(models.HikeRegistration, registration["registration_id"]).status, "cancelled")
+            self.assertEqual(db.query(models.Message).filter_by(sender_id=guest).one().content, "[deleted]")
+            self.assertEqual(db.query(models.Message).filter_by(sender_id=owner).one().content, "Other member message")
+            self.assertTrue(db.get(models.User, owner).is_active)
+            with self.assertRaises(ValueError):
+                erase_account(db, db.get(models.User, owner))
+
+    def test_authenticator_changes_require_credentials_and_revoke_sessions(self):
+        import auth
+        import pyotp
+        owner, guest, _ = self.seed_booking()
+        with database.get_db() as db:
+            db.get(models.User, guest).hashed_password = auth.hash_password("Test-only-pass-47!")
+            db.add(models.SessionToken(user_id=guest, token="old-session", expires_at=datetime.utcnow() + timedelta(days=1)))
+        with self.assertRaises(ValueError):
+            auth.setup_2fa(guest, "wrong")
+        secret, _ = auth.setup_2fa(guest, "Test-only-pass-47!")
+        self.assertFalse(auth.enable_2fa(guest))
+        self.assertTrue(auth.enable_2fa(guest, code=pyotp.TOTP(secret).now()))
+        with database.get_db() as db:
+            self.assertEqual(db.query(models.SessionToken).filter_by(user_id=guest).count(), 0)
+        with self.assertRaises(ValueError):
+            auth.setup_2fa(guest, "Test-only-pass-47!")
+        self.assertFalse(auth.disable_2fa(guest, "wrong", pyotp.TOTP(secret).now()))
+        self.assertTrue(auth.disable_2fa(guest, "Test-only-pass-47!", pyotp.TOTP(secret).now()))
+
+    def test_profile_and_owned_mutations_reject_privilege_or_owner_changes(self):
+        owner, guest, _ = self.seed_booking()
+        services.update_user_profile(guest, {"full_name": "Updated Name", "is_admin": True, "email": "attacker@example.com"})
+        goal = services.create_goal(guest, "Walk", "distance", 10)
+        self.assertFalse(services.update_goal_progress(goal["id"], 10, user_id=owner))
+        with database.get_db() as db:
+            user = db.get(models.User, guest)
+            self.assertFalse(user.is_admin)
+            self.assertEqual(user.email, "amina@example.com")
+
+    def test_block_stops_messages_in_both_directions(self):
+        from kilele_core.operations import set_block
+        owner, guest, _ = self.seed_booking()
+        conversation = services.create_conversation([owner, guest])
+        with database.get_db() as db:
+            set_block(db, guest, owner, True)
+        for sender in (owner, guest):
+            with self.assertRaises(ValueError):
+                services.send_message(sender, conversation["id"], "Blocked message")
+        with database.get_db() as db:
+            set_block(db, guest, owner, False)
+        self.assertIn("id", services.send_message(owner, conversation["id"], "Allowed again"))
+
+    def test_manage_hikes_renders_bookings_without_detached_records(self):
+        from streamlit.testing.v1 import AppTest
+        owner, guest, hike = self.seed_booking()
+        services.register_for_hike(guest, hike, "254700000000")
+        with database.get_db() as db:
+            db.add(models.SessionToken(user_id=owner, token="admin-ui-test", expires_at=datetime.utcnow() + timedelta(days=1)))
+        page = next((FRONTEND_DIR / "pages").glob("22_*.py"))
+        app = AppTest.from_file(str(page), default_timeout=30)
+        app.session_state["session_token"] = "admin-ui-test"
+        app.run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(len(app.error), 0)
+        self.assertTrue(any("Elephant Hill" in item.label for item in app.expander))
 
     def seed_users_and_hike(self):
         with database.get_db() as db:
@@ -143,7 +279,7 @@ class FrontendServiceContractTests(unittest.TestCase):
         deadline = (datetime.utcnow() + timedelta(days=30)).isoformat()
         goal = services.create_goal(user_id, "Walk 10km", "distance", 10, deadline=deadline)
         self.assertIn("id", goal)
-        self.assertTrue(services.update_goal_progress(goal["id"], 10))
+        self.assertTrue(services.update_goal_progress(goal["id"], 10, user_id=user_id))
         completed_goal = services.get_user_goals(user_id)[0]
         self.assertEqual(completed_goal["status"], "completed")
         self.assertIsNotNone(completed_goal["completed_at"])

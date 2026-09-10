@@ -1,274 +1,148 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+"""Account entry points using the same security rules as Streamlit."""
+import base64
+import io
+from datetime import datetime
+
 import pyotp
 import qrcode
-import io
-import base64
-from pathlib import Path
-import shutil
-import uuid
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
+from auth import create_access_token, get_current_active_user, get_current_admin
 from database import get_db
-from models.user import User
-from schemas.user import UserCreate, UserLogin, UserResponse, Token
-from schemas.two_fa import (
-    TwoFASetupRequest, TwoFASetupResponse, TwoFAVerifyRequest,
-    TwoFALoginRequest, TwoFADisableRequest
+from kilele_core.security import (
+    authenticate, hash_password, set_two_factor, throttle, two_factor_state,
+    verify_password, verify_second_factor, TooManyAttempts, TwoFactorRequired,
 )
-from auth import get_password_hash, verify_password, create_access_token, get_current_active_user
-from cloudinary_service import cloudinary_service
+from kilele_core.images import image_data_url
+from models.user import User
+from models.session_token import SessionToken
+from rate_limiter import limiter
+from schemas.user import UserCreate, UserLogin, UserResponse, Token
+from schemas.two_fa import TwoFASetupRequest, TwoFASetupResponse, TwoFAVerifyRequest, TwoFALoginRequest, TwoFADisableRequest
 
 router = APIRouter()
 
+
 @router.post("/register", response_model=UserResponse, status_code=201)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user"""
+@limiter.limit("5/hour")
+def register_user(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     try:
-        # Check if username exists
-        if db.query(User).filter(User.username == user.username).first():
-            raise HTTPException(
-                status_code=400,
-                detail="Username already registered"
-            )
-        
-        # Check if email exists
-        if db.query(User).filter(User.email == user.email).first():
-            raise HTTPException(
-                status_code=400,
-                detail="Email already registered"
-            )
-        
-        # Create new user
-        db_user = User(
-            username=user.username,
-            email=user.email,
-            full_name=user.full_name,
-            hashed_password=get_password_hash(user.password)
-        )
-        
-        db.add(db_user)
+        throttle(db, "register", str(user.email), limit=3)
+        if db.query(User).filter((User.username == user.username) | (func.lower(User.email) == str(user.email).lower())).first():
+            raise HTTPException(409, "Username or email already registered")
+        record = User(username=user.username.strip(), email=str(user.email).lower(),
+            full_name=user.full_name, hashed_password=hash_password(user.password))
+        db.add(record)
+        db.flush()
+        from kilele_core.operations import enqueue
+        enqueue(db, f"welcome:{record.id}", record.id, "welcome")
         db.commit()
-        db.refresh(db_user)
-        
-        return db_user
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"REGISTRATION ERROR: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        db.refresh(record)
+        return record
+    except TooManyAttempts as exc:
+        raise HTTPException(429, str(exc)) from None
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+        raise HTTPException(409, "Username or email already registered") from None
+
+
+def _login(db, username, password, code):
+    try:
+        record = authenticate(db, User, username, password, code)
+    except TooManyAttempts as exc:
+        raise HTTPException(429, str(exc)) from None
+    except TwoFactorRequired as exc:
+        raise HTTPException(401, str(exc)) from None
+    if not record:
+        raise HTTPException(401, "Invalid credentials or authenticator code")
+    db.commit()
+    return {"access_token": create_access_token({"sub": record.username}), "token_type": "bearer", "user": record}
+
 
 @router.post("/login", response_model=Token)
-def login(user: UserLogin, db: Session = Depends(get_db)):
-    """Login user and return access token"""
-    # Find user
-    db_user = db.query(User).filter(User.username == user.username).first()
-    
-    if not db_user or not verify_password(user.password, db_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Update last login
-    db_user.last_login = datetime.utcnow()
-    db.commit()
-    
-    # Create access token
-    access_token = create_access_token(
-        data={"sub": db_user.username}
-    )
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": db_user
-    }
+@limiter.limit("10/minute")
+def login(request: Request, user: UserLogin, db: Session = Depends(get_db)):
+    return _login(db, user.username, user.password, user.two_fa_token)
+
+
+@router.post("/login-2fa", response_model=Token)
+@limiter.limit("10/minute")
+def login_with_two_fa(request: Request, user_data: TwoFALoginRequest, db: Session = Depends(get_db)):
+    return _login(db, user_data.username, user_data.password, user_data.two_fa_token)
+
 
 @router.get("/me", response_model=UserResponse)
 def get_current_user_info(current_user: User = Depends(get_current_active_user)):
-    """Get current user information"""
     return current_user
 
+
 @router.get("/users", response_model=list[UserResponse])
-def get_all_users(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get all users (authenticated users only)"""
-    users = db.query(User).offset(skip).limit(limit).all()
-    return users
+def get_all_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db),
+                  current_user: User = Depends(get_current_admin)):
+    return db.query(User).offset(max(0, skip)).limit(max(1, min(limit, 100))).all()
+
 
 @router.post("/upload-profile-picture")
-async def upload_profile_picture(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """Upload user profile picture"""
-    # Validate file type
-    if file.content_type and not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    
-    # Validate file extension as fallback
-    allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-    file_extension = Path(file.filename).suffix.lower()
-    if file_extension not in allowed_extensions:
-        raise HTTPException(status_code=400, detail="File must be an image (jpg, jpeg, png, gif, or webp)")
-    
-    # Generate unique filename
-    unique_filename = f"{current_user.username}_{uuid.uuid4()}{file_extension}"
-
-    profile_url = None
-    if cloudinary_service.enabled:
-        profile_url = cloudinary_service.upload_profile_picture(file.file, current_user.id)
-
-    if not profile_url:
-        file_path = Path("static/profile_pictures") / unique_filename
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file.file.seek(0)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        profile_url = f"/static/profile_pictures/{unique_filename}"
-
-    # Update user profile
-    current_user.profile_picture = profile_url
+@limiter.limit("10/hour")
+async def upload_profile_picture(request: Request, file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    try:
+        current_user.profile_picture = image_data_url(await file.read(5 * 1024 * 1024 + 1))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    finally:
+        await file.close()
     db.commit()
-    db.refresh(current_user)
-    
-    return {
-        "message": "Profile picture uploaded successfully",
-        "profile_picture": current_user.profile_picture
-    }
+    return {"message": "Profile picture updated", "profile_picture": current_user.profile_picture}
+
+
+def _revoke_sessions(db, user):
+    user.password_changed_at = datetime.utcnow()
+    db.query(SessionToken).filter_by(user_id=user.id).delete()
+
 
 @router.post("/2fa/setup", response_model=TwoFASetupResponse)
-def setup_two_fa(
-    request: TwoFASetupRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """Setup 2FA for user account"""
-    # Verify password
-    if not verify_password(request.password, current_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect password")
-    
-    # Generate secret
+@limiter.limit("5/minute")
+def setup_two_fa(request: Request, body: TwoFASetupRequest,
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    if not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(401, "Invalid credentials")
+    if two_factor_state(current_user)[0]:
+        raise HTTPException(409, "Disable the existing authenticator before replacing it")
     secret = pyotp.random_base32()
-    
-    # Create provisioning URI for QR code
-    totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
-        name=current_user.email,
-        issuer_name="Kilele Hiking App"
-    )
-    
-    # Generate QR code
-    qr = qrcode.QRCode(version=1, box_size=10, border=5)
-    qr.add_data(totp_uri)
-    qr.make(fit=True)
-    
-    img = qr.make_image(fill_color="black", back_color="white")
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    img_str = base64.b64encode(buffer.getvalue()).decode()
-    
-    # Store secret temporarily (will be enabled after verification)
-    current_user.two_fa_secret = secret
+    set_two_factor(current_user, False, secret)
     db.commit()
-    
-    return {
-        "secret": secret,
-        "qr_code_url": f"data:image/png;base64,{img_str}",
-        "manual_entry_key": secret
-    }
+    uri = pyotp.TOTP(secret).provisioning_uri(name=current_user.email, issuer_name="Kilele Hiking App")
+    buffer = io.BytesIO()
+    qrcode.make(uri).save(buffer, format="PNG")
+    return {"secret": secret, "manual_entry_key": secret,
+            "qr_code_url": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()}
+
 
 @router.post("/2fa/verify")
-def verify_two_fa(
-    request: TwoFAVerifyRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """Verify 2FA token and enable 2FA"""
-    if not current_user.two_fa_secret:
-        raise HTTPException(status_code=400, detail="2FA not set up. Please set up 2FA first.")
-    
-    # Verify token
-    totp = pyotp.TOTP(current_user.two_fa_secret)
-    if not totp.verify(request.token):
-        raise HTTPException(status_code=400, detail="Invalid 2FA token")
-    
-    # Enable 2FA
-    current_user.two_fa_enabled = True
+@limiter.limit("5/minute")
+def verify_two_fa(request: Request, body: TwoFAVerifyRequest,
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    if not verify_second_factor(current_user, body.token, required_only=False):
+        raise HTTPException(401, "Invalid authenticator code")
+    set_two_factor(current_user, True, current_user.two_factor_secret or current_user.two_fa_secret)
+    _revoke_sessions(db, current_user)
     db.commit()
-    
-    return {"message": "2FA enabled successfully", "two_fa_enabled": True}
+    return {"message": "Authenticator enabled. Sign in again.", "two_fa_enabled": True}
+
 
 @router.post("/2fa/disable")
-def disable_two_fa(
-    request: TwoFADisableRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """Disable 2FA for user account"""
-    # Verify password
-    if not verify_password(request.password, current_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect password")
-    
-    # Verify 2FA token
-    if current_user.two_fa_enabled and current_user.two_fa_secret:
-        totp = pyotp.TOTP(current_user.two_fa_secret)
-        if not totp.verify(request.two_fa_token):
-            raise HTTPException(status_code=400, detail="Invalid 2FA token")
-    
-    # Disable 2FA
-    current_user.two_fa_enabled = False
-    current_user.two_fa_secret = None
+@limiter.limit("5/minute")
+def disable_two_fa(request: Request, body: TwoFADisableRequest,
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    if not verify_password(body.password, current_user.hashed_password) or not verify_second_factor(current_user, body.two_fa_token):
+        raise HTTPException(401, "Invalid credentials or authenticator code")
+    set_two_factor(current_user, False, None)
+    _revoke_sessions(db, current_user)
     db.commit()
-    
-    return {"message": "2FA disabled successfully", "two_fa_enabled": False}
-
-@router.post("/login-2fa", response_model=Token)
-def login_with_two_fa(user_data: TwoFALoginRequest, db: Session = Depends(get_db)):
-    """Login with 2FA token"""
-    # Find user
-    db_user = db.query(User).filter(User.username == user_data.username).first()
-    
-    if not db_user or not verify_password(user_data.password, db_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Verify 2FA token if enabled
-    if db_user.two_fa_enabled:
-        if not db_user.two_fa_secret:
-            raise HTTPException(status_code=400, detail="2FA configuration error")
-        
-        totp = pyotp.TOTP(db_user.two_fa_secret)
-        if not totp.verify(user_data.two_fa_token):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid 2FA token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-    
-    # Update last login
-    db_user.last_login = datetime.utcnow()
-    db.commit()
-    
-    # Create access token
-    access_token = create_access_token(
-        data={"sub": db_user.username}
-    )
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": db_user
-    }
+    return {"message": "Authenticator disabled. Sign in again.", "two_fa_enabled": False}

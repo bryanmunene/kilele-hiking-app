@@ -17,7 +17,7 @@ class IntegrationTests(unittest.TestCase):
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
         cls.env = patch.dict(os.environ, {
-            "DATABASE_URL": "sqlite:///" + (Path(cls.temp.name) / "integrations.db").as_posix(),
+            "DATABASE_URL": os.getenv("TEST_POSTGRES_URL") or "sqlite:///" + (Path(cls.temp.name) / "integrations.db").as_posix(),
             "ENVIRONMENT": "development", "DEBUG": "False",
         })
         cls.env.start()
@@ -52,6 +52,9 @@ class IntegrationTests(unittest.TestCase):
     def setUp(self):
         m = self.modules
         with m.database.get_db_context() as db:
+            from kilele_core.security import metadata
+            for table in reversed(metadata.sorted_tables):
+                db.execute(table.delete())
             for table in reversed(m.database.Base.metadata.sorted_tables):
                 db.execute(table.delete())
             self.user = m.User(username="hiker", email="hiker@example.com", hashed_password=m.auth.get_password_hash("Testing-pass-42"), is_admin=True)
@@ -67,6 +70,30 @@ class IntegrationTests(unittest.TestCase):
             for user_id, token in [(self.user.id, "test-session"), (self.other.id, "other-session")]:
                 db.add(m.SessionToken(user_id=user_id, token=token, expires_at=datetime.utcnow() + timedelta(days=1)))
         self.headers = {"X-Session-Token": "test-session"}
+
+    def test_api_activity_import_is_completed_and_deduplicated(self):
+        from models.hike_session import HikeSession
+        content = b'''<gpx version="1.1" creator="test"><trk><trkseg>
+          <trkpt lat="-1.0" lon="36.0"><time>2026-08-01T10:00:00Z</time></trkpt>
+          <trkpt lat="-1.01" lon="36.01"><time>2026-08-01T11:00:00Z</time></trkpt>
+        </trkseg></trk></gpx>'''
+        first = self.client.post("/api/v1/wearable/import", headers=self.headers, files={"file": ("walk.gpx", content)})
+        self.assertEqual(first.status_code, 200, first.text)
+        second = self.client.post("/api/v1/wearable/import", headers=self.headers, files={"file": ("renamed.gpx", content)})
+        self.assertTrue(second.json()["duplicate"])
+        with self.modules.database.get_db_context() as db:
+            saved = db.query(HikeSession).one()
+            self.assertFalse(saved.is_active)
+            self.assertEqual(saved.status, "completed")
+            self.assertIsNone(saved.hike_id)
+            self.assertEqual(saved.duration_minutes, 60)
+        invalid = self.client.post("/api/v1/wearable/import", headers=self.headers, files={"file": ("empty.gpx", b"<gpx/>")})
+        self.assertEqual(invalid.status_code, 400)
+
+    def test_notification_retry_requires_admin_and_provider(self):
+        self.assertEqual(self.client.post("/api/v1/admin/notifications/retry").status_code, 401)
+        self.assertEqual(self.client.post("/api/v1/admin/notifications/retry", headers={"X-Session-Token": "other-session"}).status_code, 403)
+        self.assertEqual(self.client.post("/api/v1/admin/notifications/retry", headers=self.headers).status_code, 503)
 
     def mpesa(self, environment="production"):
         service = self.modules.mpesa_service.mpesa_service
@@ -232,3 +259,82 @@ class IntegrationTests(unittest.TestCase):
                 self.assertIn("gmail.googleapis.com", post.call_args.args[0])
             with patch.object(m.email_service.requests, "post", side_effect=m.email_service.requests.Timeout):
                 self.assertFalse(m.email_service.email_service.send_email("hiker@example.com", "Test", "Test"))
+
+    def test_trail_writes_require_admin_and_anonymous_reads_work(self):
+        self.assertEqual(self.client.get("/api/v1/hikes").status_code, 200)
+        for method, path, payload in [
+            ("post", "/api/v1/hikes", {"name": "New", "location": "Kenya", "difficulty": "Easy", "distance_km": 2}),
+            ("put", f"/api/v1/hikes/{self.ids[2]}", {"name": "Changed"}),
+            ("delete", f"/api/v1/hikes/{self.ids[2]}", None),
+        ]:
+            kwargs = {"json": payload} if payload else {}
+            self.assertEqual(self.client.request(method, path, **kwargs).status_code, 401)
+            self.assertEqual(self.client.request(method, path, headers={"X-Session-Token": "other-session"}, **kwargs).status_code, 403)
+        result = self.client.put(f"/api/v1/hikes/{self.ids[2]}", headers=self.headers, json={"name": "Changed"})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.client.get("/api/v1/auth/users", headers={"X-Session-Token": "other-session"}).status_code, 403)
+
+    def test_both_login_paths_enforce_both_legacy_2fa_configurations(self):
+        import pyotp
+        from kilele_core.security import attempts
+        m = self.modules
+        secret = pyotp.random_base32()
+        for canonical in (True, False):
+            with m.database.get_db_context() as db:
+                db.execute(attempts.delete())
+                user = db.get(m.User, self.ids[0])
+                user.two_factor_enabled, user.two_fa_enabled = canonical, not canonical
+                user.two_factor_secret, user.two_fa_secret = (secret, None) if canonical else (None, secret)
+            payload = {"username": "hiker", "password": "Testing-pass-42"}
+            self.assertEqual(self.client.post("/api/v1/auth/login", json=payload).status_code, 401)
+            for endpoint in ("login", "login-2fa"):
+                self.assertEqual(self.client.post(f"/api/v1/auth/{endpoint}", json={**payload, "two_fa_token": "invalid"}).status_code, 401 if endpoint == "login-2fa" else 422)
+                response = self.client.post(f"/api/v1/auth/{endpoint}", json={**payload, "two_fa_token": pyotp.TOTP(secret).now()})
+                self.assertEqual(response.status_code, 200, response.text)
+
+    def test_database_rate_limit_survives_request_rollbacks(self):
+        from kilele_core.security import attempts
+        with self.modules.database.get_db_context() as db:
+            db.execute(attempts.delete())
+        for _ in range(10):
+            self.assertEqual(self.client.post("/api/v1/auth/login", json={"username": "missing", "password": "bad"}).status_code, 401)
+        self.assertEqual(self.client.post("/api/v1/auth/login", json={"username": "missing", "password": "bad"}).status_code, 429)
+
+    def test_api_upload_is_bounded_validated_and_durable(self):
+        import io
+        from PIL import Image
+        invalid = self.client.post("/api/v1/auth/upload-profile-picture", headers=self.headers,
+            files={"file": ("image.jpg", b"not an image", "image/jpeg")})
+        self.assertEqual(invalid.status_code, 422)
+        buffer = io.BytesIO()
+        Image.new("RGB", (20, 20), "green").save(buffer, format="PNG")
+        response = self.client.post("/api/v1/auth/upload-profile-picture", headers=self.headers,
+            files={"file": ("image.png", buffer.getvalue(), "image/png")})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["profile_picture"].startswith("data:image/jpeg;base64,"))
+
+    def test_block_applies_to_api_messages(self):
+        from kilele_core.operations import set_block
+        with self.modules.database.get_db_context() as db:
+            set_block(db, self.ids[0], self.ids[1], True)
+        response = self.client.post("/api/v1/messages/send", headers=self.headers,
+            json={"recipient_id": self.ids[1], "content": "Hello"})
+        self.assertEqual(response.status_code, 403, response.text)
+
+    def test_notification_retry_keeps_booking_and_sends_once_after_success(self):
+        import notification_worker
+        from kilele_core.operations import enqueue, outbox
+        m = self.modules
+        with m.database.get_db_context() as db:
+            db.execute(outbox.delete())
+            enqueue(db, "test-booking", self.ids[0], "booking", {"hike": "Trail", "reference": 1})
+            enqueue(db, "test-booking", self.ids[0], "booking", {"hike": "Trail", "reference": 1})
+        with patch.object(m.email_service.EmailService, "configured", new_callable=unittest.mock.PropertyMock, return_value=True):
+            with patch.object(notification_worker.email_service, "send_booking_confirmation", return_value=False):
+                self.assertEqual(notification_worker.deliver_pending()["sent"], 0)
+            with m.database.get_db_context() as db:
+                db.execute(outbox.update().values(available_at=datetime.utcnow() - timedelta(minutes=1)))
+            with patch.object(notification_worker.email_service, "send_booking_confirmation", return_value=True) as send:
+                self.assertEqual(notification_worker.deliver_pending()["sent"], 1)
+                self.assertEqual(notification_worker.deliver_pending()["sent"], 0)
+                self.assertEqual(send.call_count, 1)

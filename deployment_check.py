@@ -72,7 +72,11 @@ def check_deployment_files():
         (Path("backend") / "Dockerfile", "Backend Dockerfile"),
         (Path("frontend") / "Dockerfile", "Frontend Dockerfile"),
         (Path("docker-compose.yml"), "Docker Compose production-like stack"),
-        (Path("render.yaml"), "Render backend blueprint"),
+        (Path("render.yaml"), "Render combined-service blueprint"),
+        (Path("requirements-hosted.txt"), "Combined hosting dependencies"),
+        (Path("scripts/serve_hosted.py"), "Supervised website and API entrypoint"),
+        (Path(".github/workflows/backups.yml"), "Encrypted backup and restore workflow"),
+        (Path("OPERATIONS.md"), "Current deployment and recovery runbook"),
         (Path("FREE_DEPLOYMENT.md"), "Chosen free deployment guide"),
         (Path(".dockerignore"), ".dockerignore"),
         (Path("backend") / "Procfile", "Procfile for process-based hosts"),
@@ -156,11 +160,12 @@ def main():
         print("Next Steps:")
         print("1. Generate SECRET_KEY: openssl rand -hex 32")
         print("2. Set DATABASE_URL to a persistent PostgreSQL database, preferably Neon Free for the no-cost path")
-        print("3. Set CORS_ORIGINS to the deployed Streamlit URL")
-        print("4. Deploy backend to Render Free and frontend to Streamlit Community Cloud")
+        print("3. Set FRONTEND_URL and CORS_ORIGINS to the actual public website URL")
+        print("4. Deploy the combined website and API to the existing Render Free service")
         print("5. Configure optional Strava, Cloudinary, M-Pesa, email, and Sentry credentials")
         print()
-        print("See DEPLOYMENT.md for detailed instructions")
+        print("These checks validate configuration files, not live provider authorization or uptime.")
+        print("See OPERATIONS.md for deployment and recovery instructions")
     else:
         print("[FAIL] SOME CHECKS FAILED")
         print("Please fix the issues above before deploying")

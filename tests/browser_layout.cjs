@@ -20,7 +20,8 @@ module.exports = async function checkLayouts(page, baseUrl, outputDir) {
   await page.getByText("Signed in as layout_tester", {exact: false}).waitFor();
   const results = [];
   const routes = ["", "Profile", "Login", "Map_View", "Messages", "Wearables", "Strava",
-    "Plan_Hike", "Register_for_Hikes", "Manage_Hikes", "Hiking_Gear", "Analytics", "Integrations"];
+    "Plan_Hike", "Register_for_Hikes", "Manage_Hikes", "Hiking_Gear", "Analytics", "Integrations",
+    "Account_and_Support", "Privacy_and_Terms", "2FA_Setup", "Track_Hike", "Emergency_Contacts", "Goals", "Add_Trail"];
   for (const route of routes) {
     await page.setViewportSize({width: 1440, height: 1000});
     await page.goto(baseUrl + "/" + route);
@@ -30,6 +31,7 @@ module.exports = async function checkLayouts(page, baseUrl, outputDir) {
     await page.waitForTimeout(600);
     await idle();
     assert.equal(await page.getByTestId("stException").count(), 0, route + ": Streamlit exception");
+    assert.equal(await page.getByText(/Error loading hikes|Hikes could not be loaded/).count(), 0, route + ": data loading failure");
     if (route === "Profile") await page.getByText("Account Information", {exact: true}).waitFor();
     if (route === "Integrations") await page.getByTestId("stDataFrame").waitFor();
     if (route === "Map_View") {

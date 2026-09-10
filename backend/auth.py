@@ -11,6 +11,7 @@ from database import get_db
 from config import settings
 from models.user import User
 from models.session_token import SessionToken
+from kilele_core.security import hash_password, verify_password as check_password
 
 # Security configuration
 SECRET_KEY = settings.SECRET_KEY
@@ -21,13 +22,11 @@ security = HTTPBearer(auto_error=False)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash"""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    return check_password(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """Hash a password"""
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
+    return hash_password(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create a JWT access token"""
@@ -103,4 +102,10 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
     """Get the current active user"""
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+def get_current_admin(current_user: User = Depends(get_current_active_user)) -> User:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Administrator access required")
     return current_user

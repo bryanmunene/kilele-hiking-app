@@ -5,6 +5,7 @@ from typing import List
 from database import get_db
 from models.hike import Hike
 from schemas.hike import HikeCreate, HikeUpdate, HikeResponse
+from auth import get_current_admin
 
 router = APIRouter()
 
@@ -32,7 +33,7 @@ def get_hike(hike_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Hike not found")
     return hike
 
-@router.post("", response_model=HikeResponse, status_code=201)
+@router.post("", response_model=HikeResponse, status_code=201, dependencies=[Depends(get_current_admin)])
 def create_hike(hike: HikeCreate, db: Session = Depends(get_db)):
     """Create a new hike"""
     db_hike = Hike(**hike.model_dump())
@@ -41,7 +42,7 @@ def create_hike(hike: HikeCreate, db: Session = Depends(get_db)):
     db.refresh(db_hike)
     return db_hike
 
-@router.put("/{hike_id}", response_model=HikeResponse)
+@router.put("/{hike_id}", response_model=HikeResponse, dependencies=[Depends(get_current_admin)])
 def update_hike(hike_id: int, hike: HikeUpdate, db: Session = Depends(get_db)):
     """Update an existing hike"""
     db_hike = db.query(Hike).filter(Hike.id == hike_id).first()
@@ -56,7 +57,7 @@ def update_hike(hike_id: int, hike: HikeUpdate, db: Session = Depends(get_db)):
     db.refresh(db_hike)
     return db_hike
 
-@router.delete("/{hike_id}", status_code=204)
+@router.delete("/{hike_id}", status_code=204, dependencies=[Depends(get_current_admin)])
 def delete_hike(hike_id: int, db: Session = Depends(get_db)):
     """Delete a hike"""
     db_hike = db.query(Hike).filter(Hike.id == hike_id).first()

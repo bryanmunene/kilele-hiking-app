@@ -20,6 +20,9 @@ router = APIRouter(prefix="/api/v1/messages", tags=["messaging"])
 
 def get_or_create_conversation(db: Session, user1_id: int, user2_id: int) -> Conversation:
     """Get existing conversation between two users or create a new one"""
+    from kilele_core.operations import is_blocked
+    if is_blocked(db, user1_id, user2_id):
+        raise HTTPException(403, "Messaging is unavailable between these accounts")
     # Find existing conversation
     conversation = db.query(Conversation).join(
         ConversationParticipant, Conversation.id == ConversationParticipant.conversation_id

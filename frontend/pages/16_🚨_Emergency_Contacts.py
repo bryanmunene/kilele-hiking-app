@@ -31,12 +31,13 @@ user = get_current_user()
 # Page header
 st.title("🚨 Emergency Contacts")
 st.markdown("Stay safe on the trails - add emergency contacts who can be reached if needed")
+st.warning("Contacts are not notified automatically. This is not an SOS or rescue service.")
 
 # Safety information banner
 st.info("""
 🔒 **Your Safety Matters**
-- Add trusted contacts who should be notified in case of emergency
-- Mark one as primary contact for first notification
+- Add trusted people you can contact in an emergency
+- Mark the person you would contact first as primary
 - Keep phone numbers up to date
 - Share your hiking plans with these contacts
 """)
@@ -71,7 +72,7 @@ with col1:
                 
                 with contact_col3:
                     if st.button("🗑️", key=f"delete_{contact['id']}", help="Delete contact"):
-                        if delete_emergency_contact(contact['id']):
+                        if delete_emergency_contact(contact['id'], user_id=user['id']):
                             st.success("Contact deleted")
                             st.rerun()
                         else:
@@ -87,7 +88,7 @@ with col2:
         name = st.text_input("Full Name*", placeholder="e.g., John Doe")
         phone = st.text_input("Phone Number*", placeholder="e.g., +254 712 345 678")
         relation = st.text_input("Relationship", placeholder="e.g., Spouse, Friend, Parent")
-        is_primary = st.checkbox("Set as primary contact", help="This contact will be notified first")
+        is_primary = st.checkbox("Set as primary contact", help="Your preferred contact")
         
         submit = st.form_submit_button("Add Contact", type="primary", width="stretch")
         

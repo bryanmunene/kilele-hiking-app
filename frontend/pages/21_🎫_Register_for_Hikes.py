@@ -118,6 +118,7 @@ with available_tab:
                                     st.rerun()
 
 with bookings_tab:
+    from services import cancel_registration
     if not registrations:
         st.info("No registrations yet.")
     for registration in registrations:
@@ -128,6 +129,16 @@ with bookings_tab:
             cols[0].metric("Booking", registration["status"].title())
             cols[1].metric("Payment", registration["payment_status"].title())
             cols[2].metric("Fee", f"KES {registration['price']:,.0f}")
+            if registration["status"] != "cancelled":
+                with st.expander("Cancel registration"):
+                    confirmed = st.checkbox("Cancel my place", key=f"cancel_confirm_{registration['registration_id']}")
+                    if st.button("Cancel booking", disabled=not confirmed, key=f"cancel_{registration['registration_id']}", icon=":material/event_busy:"):
+                        result = cancel_registration(user["id"], registration["registration_id"])
+                        if result.get("error"):
+                            st.error(result["error"])
+                        else:
+                            st.session_state.booking_feedback = result["message"]
+                            st.rerun()
             if registration["price"] and registration["payment_status"] != "paid":
                 if st.button("Check payment status", key=f"check_{registration['registration_id']}", icon=":material/refresh:"):
                     with st.spinner("Checking with M-Pesa..."):

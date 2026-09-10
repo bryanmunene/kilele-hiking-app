@@ -221,9 +221,11 @@ def get_hike(hike_id: int) -> Optional[dict]:
             return None
         return _hike_to_dict(hike)
 
-def create_hike(hike_data: dict) -> dict:
+def create_hike(hike_data: dict, actor_id: int = None) -> dict:
     """Create a new hike"""
     with get_db() as db:
+        from kilele_core.security import require_admin
+        require_admin(db, User, actor_id)
         new_hike = Hike(**hike_data)
         db.add(new_hike)
         db.flush()
@@ -552,6 +554,12 @@ def send_message(sender_id: int, conversation_id: int, content: str) -> dict:
         
         if not participant:
             raise ValueError("Not authorized to send message")
+        from kilele_core.operations import is_blocked
+        recipients = db.query(ConversationParticipant).filter_by(conversation_id=conversation_id).all()
+        if any(is_blocked(db, sender_id, item.user_id) for item in recipients):
+            raise ValueError("Messaging is unavailable between these accounts.")
+        if len(content) > 5000:
+            raise ValueError("Messages must be at most 5,000 characters.")
         
         message = Message(
             conversation_id=conversation_id,
@@ -582,6 +590,9 @@ def create_conversation(user_ids: List[int]) -> dict:
         missing_user_ids = set(unique_user_ids) - existing_users
         if missing_user_ids:
             raise ValueError("One or more selected users do not exist")
+        from kilele_core.operations import is_blocked
+        if any(is_blocked(db, first, second) for first in unique_user_ids for second in unique_user_ids if first != second):
+            raise ValueError("Messaging is unavailable between these accounts.")
 
         for existing in db.query(Conversation).join(ConversationParticipant).filter(
             ConversationParticipant.user_id.in_(unique_user_ids)
@@ -642,7 +653,7 @@ def update_user_profile(user_id: int, updates: dict) -> dict:
         
         # Update allowed fields
         for key, value in updates.items():
-            if hasattr(user, key) and key not in ['id', 'username', 'hashed_password']:
+            if key in {'full_name', 'bio', 'profile_picture', 'experience_level'}:
                 setattr(user, key, value)
         
         db.flush()
@@ -806,6 +817,7 @@ def get_user_achievements(user_id: int) -> List[dict]:
 def get_all_users_admin(skip: int = 0, limit: int = 100) -> List[dict]:
     """Get all users (admin only)"""
     with get_db() as db:
+        _require_admin_actor(db)
         users = db.query(User).offset(skip).limit(limit).all()
         return [{
             "id": u.id,
@@ -840,16 +852,21 @@ def get_platform_stats() -> dict:
 def toggle_user_status(user_id: int, is_active: bool) -> bool:
     """Activate/deactivate user (admin only)"""
     with get_db() as db:
+        _require_admin_actor(db)
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             return False
         user.is_active = is_active
+        from models import SessionToken
+        user.password_changed_at = datetime.utcnow()
+        db.query(SessionToken).filter_by(user_id=user.id).delete()
         db.flush()
         return True
 
 def toggle_admin_status(user_id: int, is_admin: bool) -> bool:
     """Grant/revoke admin privileges (admin only)"""
     with get_db() as db:
+        _require_admin_actor(db)
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             return False
@@ -858,18 +875,26 @@ def toggle_admin_status(user_id: int, is_admin: bool) -> bool:
         return True
 
 def delete_user_admin(user_id: int) -> bool:
-    """Delete user and all related data (admin only)"""
+    """Anonymize a non-admin account while preserving booking references."""
     with get_db() as db:
+        _require_admin_actor(db)
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             return False
-        db.delete(user)
+        if user.is_admin:
+            return False
+        from kilele_core.operations import erase_account
+        try:
+            erase_account(db, user)
+        except ValueError:
+            return False
         db.flush()
         return True
 
 def delete_hike_admin(hike_id: int) -> bool:
     """Delete hike and all related data (admin only)"""
     with get_db() as db:
+        _require_admin_actor(db)
         hike = db.query(Hike).filter(Hike.id == hike_id).first()
         if not hike:
             return False
@@ -880,6 +905,7 @@ def delete_hike_admin(hike_id: int) -> bool:
 def delete_review_admin(review_id: int) -> bool:
     """Delete review (admin only)"""
     with get_db() as db:
+        _require_admin_actor(db)
         review = db.query(Review).filter(Review.id == review_id).first()
         if not review:
             return False
@@ -890,6 +916,7 @@ def delete_review_admin(review_id: int) -> bool:
 def get_all_reviews_admin(skip: int = 0, limit: int = 100) -> List[dict]:
     """Get all reviews with user info (admin only)"""
     with get_db() as db:
+        _require_admin_actor(db)
         reviews = db.query(Review).offset(skip).limit(limit).all()
         return [{
             "id": r.id,
@@ -1088,11 +1115,11 @@ def get_user_goals(user_id: int) -> List[dict]:
             "created_at": g.created_at.isoformat() if g.created_at else None
         } for g in goals]
 
-def update_goal_progress(goal_id: int, current_value: float) -> bool:
+def update_goal_progress(goal_id: int, current_value: float, user_id: int = None) -> bool:
     """Update goal progress"""
     from models import Goal
     with get_db() as db:
-        goal = db.query(Goal).filter(Goal.id == goal_id).first()
+        goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == user_id).first()
         if not goal:
             return False
         goal.current_value = current_value
@@ -1139,11 +1166,11 @@ def get_emergency_contacts(user_id: int) -> List[dict]:
             "is_primary": c.is_primary
         } for c in contacts]
 
-def delete_emergency_contact(contact_id: int) -> bool:
+def delete_emergency_contact(contact_id: int, user_id: int = None) -> bool:
     """Delete an emergency contact"""
     from models import EmergencyContact
     with get_db() as db:
-        contact = db.query(EmergencyContact).filter(EmergencyContact.id == contact_id).first()
+        contact = db.query(EmergencyContact).filter(EmergencyContact.id == contact_id, EmergencyContact.user_id == user_id).first()
         if not contact:
             return False
         db.delete(contact)
@@ -1339,14 +1366,45 @@ def get_user_planned_hikes(user_id: int, status: str = None) -> List[dict]:
     except Exception:
         return []
 
-def update_planned_hike_status(planned_hike_id: int, status: str) -> dict:
-    """Update status of a planned hike (planned, completed, cancelled)"""
+def update_planned_hike_status(planned_hike_id: int, status: str, user_id: int = None, *, admin=False, changes=None) -> dict:
+    """Apply an organizer change and its booking notifications atomically."""
+    from models import HikeRegistration
+    from kilele_core.operations import enqueue
     try:
         with get_db() as db:
-            planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).first()
+            if admin:
+                _require_admin_actor(db)
+            query = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id)
+            if not admin:
+                query = query.filter(PlannedHike.user_id == user_id)
+            planned_hike = query.with_for_update().first()
             if not planned_hike:
                 return {"error": "Planned hike not found"}
-            
+            if status not in {"planned", "completed", "cancelled"}:
+                return {"error": "Invalid hike status"}
+            registrations = db.query(HikeRegistration).filter_by(planned_hike_id=planned_hike_id).all()
+            active = [r for r in registrations if r.status != "cancelled"]
+            changes = changes or {}
+            if set(changes) - {"price", "max_participants", "planned_date", "notes"}:
+                return {"error": "Unsupported hike change"}
+            if registrations and any(key in changes and changes[key] != getattr(planned_hike, key) for key in ("price", "planned_date")):
+                return {"error": "A booked hike's date and price cannot be changed. Cancel it and create a new hike."}
+            if changes.get("price", 0) < 0 or changes.get("max_participants", 1) < max(1, len(active)):
+                return {"error": "Capacity cannot be below existing bookings and price cannot be negative."}
+            planned_date = changes.get("planned_date", planned_hike.planned_date)
+            if status == "completed" and planned_date > datetime.utcnow():
+                return {"error": "A future hike cannot be marked completed."}
+            if status == "planned" and planned_date <= datetime.utcnow():
+                return {"error": "Choose a future date before reopening a hike."}
+            if status == "cancelled" and planned_hike.status != "cancelled":
+                import uuid
+                trail = db.get(Hike, planned_hike.hike_id)
+                for registration in active:
+                    registration.status = "cancelled"
+                    enqueue(db, f"cancel:{registration.id}:{uuid.uuid4().hex}", registration.user_id,
+                        "cancellation", {"hike": trail.name, "reference": registration.id})
+            for key, value in changes.items():
+                setattr(planned_hike, key, value)
             planned_hike.status = status
             planned_hike.updated_at = datetime.utcnow()
             db.flush()
@@ -1355,18 +1413,18 @@ def update_planned_hike_status(planned_hike_id: int, status: str) -> dict:
     except Exception:
         return {"error": "Unable to update hike status"}
 
-def add_waypoint_to_planned_hike(planned_hike_id: int, waypoint: dict) -> dict:
+def add_waypoint_to_planned_hike(planned_hike_id: int, waypoint: dict, user_id: int = None) -> dict:
     """Add a waypoint/pin to driving directions"""
     try:
         with get_db() as db:
-            planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).first()
+            planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id, PlannedHike.user_id == user_id).first()
             if not planned_hike:
                 return {"error": "Planned hike not found"}
             
             if planned_hike.driving_directions is None:
                 planned_hike.driving_directions = []
             
-            planned_hike.driving_directions.append(waypoint)
+            planned_hike.driving_directions = [*(planned_hike.driving_directions or []), waypoint]
             planned_hike.updated_at = datetime.utcnow()
             db.flush()
             
@@ -1374,14 +1432,22 @@ def add_waypoint_to_planned_hike(planned_hike_id: int, waypoint: dict) -> dict:
     except Exception:
         return {"error": "Unable to add waypoint"}
 
-def delete_planned_hike(planned_hike_id: int) -> dict:
+def delete_planned_hike(planned_hike_id: int, user_id: int = None, *, admin=False) -> dict:
     """Delete a planned hike"""
     try:
         with get_db() as db:
-            planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).first()
+            if admin:
+                _require_admin_actor(db)
+            query = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id)
+            if not admin:
+                query = query.filter(PlannedHike.user_id == user_id)
+            planned_hike = query.with_for_update().first()
             if not planned_hike:
                 return {"error": "Planned hike not found"}
             
+            from models import HikeRegistration
+            if db.query(HikeRegistration).filter_by(planned_hike_id=planned_hike_id).first():
+                return {"error": "This hike has booking records. Cancel it instead of deleting it."}
             db.delete(planned_hike)
             db.flush()
             return {"message": "Planned hike deleted"}
@@ -1409,7 +1475,7 @@ def register_for_hike(user_id: int, planned_hike_id: int, phone_number: str) -> 
                 HikeRegistration.planned_hike_id == planned_hike_id,
                 HikeRegistration.user_id == user_id
             ).first()
-            if existing:
+            if existing and existing.status != "cancelled":
                 return {"error": "Already registered for this hike"}
             
             # Check capacity
@@ -1422,16 +1488,24 @@ def register_for_hike(user_id: int, planned_hike_id: int, phone_number: str) -> 
                     return {"error": "Hike is full"}
             
             # Create registration
-            registration = HikeRegistration(
+            registration = existing or HikeRegistration(
                 planned_hike_id=planned_hike_id,
                 user_id=user_id,
                 phone_number=phone_number,
                 status="confirmed" if planned_hike.price == 0 else "pending",
                 payment_status="paid" if planned_hike.price == 0 else "unpaid"
             )
+            registration.status = "confirmed"
+            registration.payment_status = "paid"
+            registration.phone_number = phone_number
             db.add(registration)
             db.flush()
             db.refresh(registration)
+            from kilele_core.operations import enqueue
+            import uuid
+            trail = db.get(Hike, planned_hike.hike_id)
+            enqueue(db, f"booking:{registration.id}:{uuid.uuid4().hex}", user_id, "booking",
+                {"hike": trail.name, "reference": registration.id})
             
             return {
                 "registration_id": registration.id,
@@ -1439,8 +1513,30 @@ def register_for_hike(user_id: int, planned_hike_id: int, phone_number: str) -> 
                 "payment_required": planned_hike.price > 0,
                 "amount": planned_hike.price
             }
-    except Exception as e:
-        return {"error": f"Registration failed: {str(e)}"}
+    except Exception:
+        return {"error": "Registration could not be completed. Please try again."}
+
+
+def cancel_registration(user_id: int, registration_id: int) -> dict:
+    from models import HikeRegistration, Payment
+    from kilele_core.operations import enqueue
+    import uuid
+    with get_db() as db:
+        registration = db.query(HikeRegistration).filter_by(id=registration_id, user_id=user_id).with_for_update().first()
+        if not registration:
+            return {"error": "Registration not found."}
+        if registration.status == "cancelled":
+            return {"message": "Registration already cancelled."}
+        hike = db.get(PlannedHike, registration.planned_hike_id)
+        if hike.planned_date <= datetime.utcnow():
+            return {"error": "Contact support about a past hike."}
+        if (hike.price or 0) > 0 or db.query(Payment).filter_by(registration_id=registration.id).first():
+            return {"error": "Contact kileleexplorers@gmail.com to reconcile payment and request cancellation/refund."}
+        registration.status = "cancelled"
+        trail = db.get(Hike, hike.hike_id)
+        enqueue(db, f"cancel:{registration.id}:{uuid.uuid4().hex}", user_id, "cancellation",
+            {"hike": trail.name, "reference": registration.id})
+        return {"message": "Registration cancelled. Your place has been released."}
 
 
 def get_user_registrations(user_id: int) -> list:
@@ -1557,3 +1653,10 @@ def get_hike_registrations(planned_hike_id: int) -> list:
             return result
     except Exception:
         return []
+
+
+def _require_admin_actor(db):
+    from auth import get_current_user
+    from kilele_core.security import require_admin
+    actor = get_current_user()
+    return require_admin(db, User, actor["id"] if actor else None)

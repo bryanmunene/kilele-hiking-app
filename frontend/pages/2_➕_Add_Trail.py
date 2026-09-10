@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import init_database
 from services import create_hike as create_hike_record, get_all_hikes
 from nature_theme import apply_nature_theme
+from auth import restore_session_from_storage, get_current_user
 
 # Initialize database
 init_database()
@@ -19,6 +20,11 @@ st.set_page_config(
     layout="wide"
 )
 apply_nature_theme()
+restore_session_from_storage()
+actor = get_current_user()
+if not actor or not actor.get("is_admin"):
+    st.warning("Administrator access required to publish trails.")
+    st.stop()
 
 # Mobile-optimized form inputs
 st.markdown("""
@@ -40,7 +46,7 @@ st.markdown("""
 def save_hike(hike_data):
     """Create a new hike via database"""
     try:
-        result = create_hike_record(hike_data)
+        result = create_hike_record(hike_data, actor_id=actor["id"])
         return True, result
     except Exception as e:
         return False, str(e)

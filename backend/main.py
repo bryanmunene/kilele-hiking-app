@@ -19,7 +19,7 @@ except Exception:
     pass
 
 from database import engine, Base, init_database
-from routers import hikes, auth, user_activity, social, messaging, wearable, strava, payments, recovery, integrations
+from routers import hikes, auth, user_activity, social, messaging, wearable, strava, payments, recovery, integrations, operations
 from config import settings
 from rate_limiter import RateLimitExceeded, limiter, rate_limit_handler
 
@@ -37,7 +37,8 @@ try:
     init_database()
     logger.info("Database initialized")
 except Exception as e:
-    logger.error("Database initialization failed: %s", e)
+    logger.error("Database initialization failed; refusing to start")
+    raise RuntimeError("Database initialization failed") from None
 
 
 @asynccontextmanager
@@ -49,6 +50,11 @@ async def lifespan(app: FastAPI):
     logger.info("Cloudinary: %s", "enabled" if settings.has_cloudinary else "disabled")
     logger.info("Email: %s", "enabled" if settings.has_email else "disabled")
     logger.info("Sentry: %s", "enabled" if settings.has_sentry else "disabled")
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from notification_worker import deliver_pending
+    mail_scheduler = BackgroundScheduler()
+    mail_scheduler.add_job(deliver_pending, "interval", seconds=60, max_instances=1, coalesce=True)
+    mail_scheduler.start()
 
     try:
         from strava_scheduler import start_scheduler
@@ -60,6 +66,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        mail_scheduler.shutdown(wait=False)
         try:
             from strava_scheduler import stop_scheduler
             stop_scheduler()
@@ -114,6 +121,7 @@ app.include_router(strava.router, tags=["strava"])
 app.include_router(payments.router)
 app.include_router(recovery.router)
 app.include_router(integrations.router)
+app.include_router(operations.router)
 
 # Mount static files for images
 STATIC_DIR = Path(__file__).resolve().parent / "static"

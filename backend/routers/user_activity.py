@@ -106,7 +106,7 @@ def update_session(
         setattr(db_session, key, value)
     
     # If marking as inactive (completed), set completed timestamp
-    if update_data.get('is_active') == False and db_session.is_active:
+    if update_data.get('is_active') is False:
         db_session.completed_at = datetime.utcnow()
         db_session.ended_at = db_session.completed_at
         db_session.status = "completed"

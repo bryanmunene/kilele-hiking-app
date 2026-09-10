@@ -23,66 +23,25 @@ async def import_wearable_data(
     Import hiking data from wearable device files (GPX, FIT, TCX)
     Supports Garmin, Fitbit, Apple Watch, Strava, and other devices
     """
-    # Validate file extension
-    file_extension = Path(file.filename).suffix.lower()
-    supported_formats = ['.gpx', '.fit', '.tcx']
-    
-    if file_extension not in supported_formats:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file format. Supported formats: {', '.join(supported_formats)}"
-        )
-    
+    from models.hike import Hike
+    from kilele_core.activities import save_activity
     try:
-        # Read file content
-        file_content = await file.read()
-        
-        # Parse the file based on type
-        parsed_data = WearableDataParser.parse_file(file_content, file_extension)
-        
-        if not parsed_data['success']:
-            raise HTTPException(status_code=400, detail=parsed_data['error'])
-        
-        # Create hike session from parsed data
-        hike_session = HikeSession(
-            user_id=current_user.id,
-            hike_id=hike_id,  # Optional - can be matched later
-            started_at=parsed_data.get('start_time'),
-            ended_at=parsed_data.get('end_time'),
-            duration_hours=parsed_data.get('duration_hours', 0),
-            distance_covered_km=parsed_data.get('total_distance_km', 0),
-            elevation_gain_m=parsed_data.get('elevation_gain_m', 0),
-            status='completed',
-            route_data=json.dumps(parsed_data.get('route_coordinates', [])),
-            notes=f"Imported from {parsed_data['source']} file: {file.filename}"
-        )
-        
-        db.add(hike_session)
+        content = await file.read(10 * 1024 * 1024 + 1)
+    finally:
+        await file.close()
+    try:
+        result = save_activity(db, User, Hike, HikeSession, WearableDataParser,
+                               current_user.id, file.filename or "", content, hike_id)
         db.commit()
-        db.refresh(hike_session)
-        
-        return {
-            "message": "Wearable data imported successfully",
-            "session_id": hike_session.id,
-            "summary": {
-                "name": parsed_data.get('name'),
-                "distance_km": parsed_data.get('total_distance_km'),
-                "elevation_gain_m": parsed_data.get('elevation_gain_m'),
-                "duration_hours": parsed_data.get('duration_hours'),
-                "total_points": parsed_data.get('total_points'),
-                "source": parsed_data.get('source'),
-                "center": {
-                    "latitude": parsed_data.get('center_latitude'),
-                    "longitude": parsed_data.get('center_longitude')
-                }
-            },
-            "route_coordinates": parsed_data.get('route_coordinates', [])
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+        return {**result, "message": "Activity already saved." if result["duplicate"] else "Activity saved.",
+                "route_coordinates": result["summary"].get("route_coordinates", [])}
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(400, str(exc))
+    except Exception:
+        db.rollback()
+        raise HTTPException(500, "The activity could not be saved. Please try again.")
+
 
 @router.get("/sessions/{session_id}/route")
 def get_session_route(

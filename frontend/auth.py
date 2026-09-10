@@ -12,6 +12,10 @@ from pathlib import Path
 from database import get_db
 from models import User, SessionToken
 from datetime import datetime, timedelta
+from kilele_core.security import (
+    authenticate, hash_password as shared_hash, set_two_factor, throttle,
+    two_factor_state, verify_second_factor, TooManyAttempts, TwoFactorRequired,
+)
 
 _session_storage = components.declare_component(
     "kilele_session_storage", path=str(Path(__file__).parent / "session_storage")
@@ -19,7 +23,7 @@ _session_storage = components.declare_component(
 
 def hash_password(password: str) -> str:
     """Hash a password"""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    return shared_hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
@@ -74,8 +78,8 @@ def get_user_by_token(token: str) -> dict:
             "full_name": user.full_name,
             "profile_picture": user.profile_picture,
             "is_admin": user.is_admin,
-            "two_factor_enabled": user.two_factor_enabled,
-            "two_factor_secret": user.two_factor_secret,
+            "email_verified": user.email_verified,
+            "two_factor_enabled": two_factor_state(user)[0],
             "created_at": user.created_at.isoformat() if user.created_at else None
         }
 
@@ -87,15 +91,11 @@ def invalidate_token(token: str):
             db.delete(session)
             db.flush()
 
-def authenticate_user(username: str, password: str) -> dict:
+def authenticate_user(username: str, password: str, code: str = "") -> dict:
     """Authenticate user and return user data"""
     with get_db() as db:
-        user = db.query(User).filter(User.username == username).first()
-        
-        if not user or not user.is_active:
-            return None
-        
-        if not verify_password(password, user.hashed_password):
+        user = authenticate(db, User, username, password, code)
+        if not user:
             return None
         
         return {
@@ -105,14 +105,22 @@ def authenticate_user(username: str, password: str) -> dict:
             "full_name": user.full_name,
             "profile_picture": user.profile_picture,
             "is_admin": user.is_admin,
-            "two_factor_enabled": user.two_factor_enabled,
-            "two_factor_secret": user.two_factor_secret,
+            "two_factor_enabled": two_factor_state(user)[0],
             "created_at": user.created_at.isoformat() if user.created_at else None
         }
 
 def register_user(username: str, email: str, password: str, full_name: str = None) -> dict:
     """Register a new user"""
     with get_db() as db:
+        from email_validator import validate_email, EmailNotValidError
+        if not 3 <= len(username) <= 50 or not username.replace("_", "").isalnum():
+            raise ValueError("Use 3-50 letters, numbers or underscores for your username.")
+        try:
+            email = validate_email(email, check_deliverability=False).normalized.lower()
+        except EmailNotValidError:
+            raise ValueError("Enter a valid email address.") from None
+        throttle(db, "register", email, limit=3)
+        throttle(db, "register_site", "website", limit=20)
         # Check if user exists
         existing = db.query(User).filter(
             (User.username == username) | (User.email == email)
@@ -131,6 +139,8 @@ def register_user(username: str, email: str, password: str, full_name: str = Non
         )
         db.add(new_user)
         db.flush()
+        from kilele_core.operations import enqueue
+        enqueue(db, f"welcome:{new_user.id}", new_user.id, "welcome")
         
         return {
             "id": new_user.id,
@@ -139,17 +149,20 @@ def register_user(username: str, email: str, password: str, full_name: str = Non
             "full_name": new_user.full_name
         }
 
-def setup_2fa(user_id: int) -> tuple:
+def setup_2fa(user_id: int, password: str = "") -> tuple:
     """Setup 2FA for user and return secret + provisioning URI"""
     with get_db() as db:
+        throttle(db, "2fa-setup", str(user_id), limit=10)
         user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            raise ValueError("User not found")
+        if not user or not verify_password(password, user.hashed_password):
+            raise ValueError("Confirm your password to set up an authenticator.")
+        if two_factor_state(user)[0]:
+            raise ValueError("Disable the existing authenticator before replacing it.")
         
         # Generate secret if not exists
         if not user.two_factor_secret:
             secret = pyotp.random_base32()
-            user.two_factor_secret = secret
+            set_two_factor(user, False, secret)
             db.commit()
         else:
             secret = user.two_factor_secret
@@ -167,40 +180,42 @@ def verify_2fa_code(user_id: int, code: str) -> bool:
     """Verify a 2FA code"""
     with get_db() as db:
         user = db.query(User).filter(User.id == user_id).first()
-        if not user or not user.two_factor_secret:
-            return False
-        
-        totp = pyotp.TOTP(user.two_factor_secret)
-        return totp.verify(code)
-
-def enable_2fa(user_id: int, enable: bool = True) -> bool:
-    """Enable or disable 2FA for a user"""
-    with get_db() as db:
-        user = db.query(User).filter(User.id == user_id).first()
+        throttle(db, "2fa", str(user_id), limit=10)
         if not user:
             return False
-        
-        user.two_factor_enabled = enable
+        return verify_second_factor(user, code, required_only=False)
+
+def enable_2fa(user_id: int, enable: bool = True, code: str = "") -> bool:
+    """Enable or disable 2FA for a user"""
+    with get_db() as db:
+        throttle(db, "2fa", str(user_id), limit=10)
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not enable or not verify_second_factor(user, code, required_only=False):
+            return False
+        set_two_factor(user, True, user.two_factor_secret or user.two_fa_secret)
+        user.password_changed_at = datetime.utcnow()
+        db.query(SessionToken).filter_by(user_id=user_id).delete()
         db.commit()
         return True
 
-def disable_2fa(user_id: int) -> bool:
+def disable_2fa(user_id: int, password: str = "", code: str = "") -> bool:
     """Disable 2FA and remove secret"""
     with get_db() as db:
         user = db.query(User).filter(User.id == user_id).first()
-        if not user:
+        throttle(db, "2fa", str(user_id), limit=10)
+        if not user or not verify_password(password, user.hashed_password) or not verify_second_factor(user, code):
             return False
-        
-        user.two_factor_enabled = False
-        user.two_factor_secret = None
+        set_two_factor(user, False, None)
+        user.password_changed_at = datetime.utcnow()
+        db.query(SessionToken).filter_by(user_id=user_id).delete()
         db.commit()
         return True
 
 def is_authenticated() -> bool:
     """Check if user is authenticated (checks session state and persistent token)"""
     # First check session state
-    if "authenticated" in st.session_state and st.session_state.authenticated:
-        return True
+    if st.session_state.get("authenticated") and not st.session_state.get("session_token"):
+        st.session_state.authenticated = False
     
     # Check for persistent token
     if "session_token" in st.session_state and st.session_state.session_token:

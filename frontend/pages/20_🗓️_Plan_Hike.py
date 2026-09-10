@@ -252,17 +252,17 @@ with tab2:
                     # Action buttons
                     if hike['status'] == 'planned':
                         if st.button("✅ Complete", key=f"complete_{hike['id']}"):
-                            update_planned_hike_status(hike['id'], 'completed')
+                            update_planned_hike_status(hike['id'], 'completed', user_id=user['id'])
                             st.success("Marked as completed!")
                             st.rerun()
                         
                         if st.button("❌ Cancel", key=f"cancel_{hike['id']}"):
-                            update_planned_hike_status(hike['id'], 'cancelled')
+                            update_planned_hike_status(hike['id'], 'cancelled', user_id=user['id'])
                             st.info("Hike cancelled")
                             st.rerun()
                     
                     if st.button("🗑️ Delete", key=f"delete_{hike['id']}"):
-                        delete_planned_hike(hike['id'])
+                        delete_planned_hike(hike['id'], user_id=user['id'])
                         st.warning("Hike deleted")
                         st.rerun()
                 
@@ -316,7 +316,7 @@ with tab2:
                                     "lat": wp_lat,
                                     "lng": wp_lng
                                 }
-                                add_waypoint_to_planned_hike(hike['id'], waypoint)
+                                add_waypoint_to_planned_hike(hike['id'], waypoint, user_id=user['id'])
                                 st.success("Waypoint added!")
                                 st.rerun()
                             else:
