@@ -36,7 +36,19 @@ def run_pg(tool, args, url, **kwargs):
         timeout=600, **kwargs)
     if result.returncode:
         # stderr may contain connection strings or values from database records.
-        raise RuntimeError(f"{tool} failed; no successful backup/restore was recorded.")
+        error = result.stderr.decode("utf-8", errors="replace") if isinstance(result.stderr, bytes) else (result.stderr or "")
+        reason = "provider or archive error"
+        if 'schema "public" already exists' in error:
+            reason = "default public schema already exists"
+        elif "unrecognized configuration parameter" in error:
+            reason = "incompatible PostgreSQL configuration parameter"
+        elif "does not exist" in error and "role" in error:
+            reason = "archive references a provider-specific database role"
+        elif "unsupported version" in error:
+            reason = "archive requires newer PostgreSQL tools"
+        elif "Connection refused" in error or "could not connect" in error:
+            reason = "restore target connection unavailable"
+        raise RuntimeError(f"{tool} failed: {reason}; no successful backup/restore was recorded.")
 
 
 class BackupService:
@@ -145,4 +157,6 @@ if __name__ == "__main__":
     except Exception as exc:
         # Never print provider errors, secrets, decrypted contents or connection URLs.
         print(f"Backup operation failed ({type(exc).__name__}). Check configuration and target.")
+        if isinstance(exc, RuntimeError):
+            print(str(exc))
         raise SystemExit(1)
