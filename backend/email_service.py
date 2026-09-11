@@ -98,9 +98,10 @@ class EmailService:
             f"<p>Hi {escape(username)},</p><p>You earned {escape(achievement_name)}.</p>")
     
     def send_booking_confirmation(self, to_email, hike_name, reference):
+        itinerary = settings.FRONTEND_URL + "/My_Hikes"
         return self.send_email(to_email, "Kilele booking confirmed",
-            f"<p>Your booking for {escape(hike_name)} is confirmed.</p><p>Reference: {escape(reference)}</p>",
-            f"Your booking for {hike_name} is confirmed. Reference: {reference}")
+            f'<p>Your booking for {escape(hike_name)} is confirmed.</p><p>Reference: {escape(reference)}</p><p><a href="{escape(itinerary, quote=True)}">View your itinerary and booking</a></p>',
+            f"Your booking for {hike_name} is confirmed. Reference: {reference}. View your itinerary: {itinerary}")
 
     def send_booking_cancellation(self, to_email, hike_name, reference):
         text = f"Your booking for {hike_name} has been cancelled. Reference: {reference}. Contact kileleexplorers@gmail.com with questions."

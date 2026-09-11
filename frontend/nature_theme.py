@@ -419,6 +419,12 @@ NATURE_CSS = """
     [data-testid="stTable"] { overflow-x: auto; }
     [data-testid="stForm"] { border-radius: 8px; }
     .st-key-trail_photo img { max-height: 360px; object-fit: contain; }
+    [class*="st-key-registration_card_"] [data-testid="stMetric"],
+    [class*="st-key-event_card_"] [data-testid="stMetric"] {
+        background: transparent;
+        border: 0;
+        padding: 0.25rem 0;
+    }
     :is(button, a, input, textarea, select):focus-visible {
         outline: 3px solid #087eaa !important;
         outline-offset: 3px !important;

@@ -49,7 +49,7 @@ def support_link(reference=None):
 
 def registration_card(registration):
     r = registration
-    with st.container(border=True):
+    with st.container(border=True, key=f"registration_card_{r['registration_id']}"):
         st.subheader(r["hike_name"])
         st.caption(f"{r['hike_location']} | {datetime.fromisoformat(r['planned_date']):%d %B %Y} | Reference #{r['registration_id']}")
         cols = st.columns(3)

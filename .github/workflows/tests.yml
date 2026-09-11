@@ -71,7 +71,7 @@ jobs:
         run: |
           python -m pip install -r requirements-dev.txt
           pnpm install --frozen-lockfile
-          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright install chromium
       - name: Browser journeys and accessibility
         run: pnpm exec playwright test
       - name: Browser evidence

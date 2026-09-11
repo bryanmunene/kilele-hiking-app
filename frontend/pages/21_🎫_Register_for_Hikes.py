@@ -31,7 +31,7 @@ if not event_id:
     if not events:
         st.info("No group hikes match these filters.")
     for event in events:
-        with st.container(border=True):
+        with st.container(border=True, key=f"event_card_{event['id']}"):
             st.subheader(event["name"])
             event_summary(event)
             st.page_link(BOOKING_PAGE, label="Review and book", icon=":material/event_available:",

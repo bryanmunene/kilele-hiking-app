@@ -33,10 +33,16 @@ not sufficient on that host.
 7. Import those four values into the Render backend environment:
    `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `FROM_EMAIL`.
 8. Set `FRONTEND_URL` to
-   `https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app`.
+   `https://kilele-hiking-api.onrender.com`.
 9. Deploy the backend. Request a reset for your own Kilele account in **Sign in >
    Reset password** and verify delivery, the link, and the new login. Existing
    sessions and old API access tokens are revoked after a successful reset.
+
+The public organizer sender is `kileleexplorers@gmail.com`. After importing
+credentials, use **Organizer > Operations > Send test to my inbox**, then confirm
+receipt in that Kilele administrator account's inbox. A provider accepting a
+message is not proof of delivery. Retry queued notifications from Operations
+after the sender is authorized. No password or refresh token belongs in chat.
 
 Mail is quota-limited. Consumer Gmail can block sending after more than 500
 messages in a day; limits and abuse protections may be stricter for new accounts.
@@ -76,11 +82,11 @@ When you have an approved API application, set these on the Render backend:
 ```dotenv
 STRAVA_CLIENT_ID=
 STRAVA_CLIENT_SECRET=
-STRAVA_REDIRECT_URI=https://kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app/Strava
+STRAVA_REDIRECT_URI=https://kilele-hiking-api.onrender.com/Strava
 ```
 
 Set the Strava application's Authorization Callback Domain to
-`kilele-hiking-appgit-cnrnmlnmkgku6xjzrrxzcg.streamlit.app`.
+`kilele-hiking-api.onrender.com`.
 The repaired flow uses expiring, single-use state tied to the signed-in user.
 It requests `read` and `activity:read`, excluding private activities and privacy
 zone data. Reconnection is needed if an older authorization granted different
@@ -129,7 +135,7 @@ number and transaction type with Safaricom; `MPESA_PARTY_B` and
 Business eligibility and transaction charges are separate from free web hosting.
 We have not activated a merchant account or sent any real payment request.
 
-The user can check a pending payment under **My registrations**. Confirmed failures
+The user can check a pending payment under **My Hikes > Upcoming**. Confirmed failures
 can be retried. An ambiguous network failure is left unresolved and blocks a new
 charge, because retrying without knowing the first result can charge twice.
 If the service restarts before receiving a checkout ID, an organizer must reconcile

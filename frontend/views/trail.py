@@ -32,7 +32,7 @@ if not events:
     st.info("No upcoming group hikes have been published for this trail.")
     st.page_link("pages/20_🗓️_Plan_Hike.py", label="Plan a personal hike", icon=":material/event_note:")
 for event in events:
-    with st.container(border=True):
+    with st.container(border=True, key=f"event_card_{event['id']}"):
         event_summary(event)
         st.page_link(BOOKING_PAGE, label="Review and book", icon=":material/event_available:",
                      query_params={"event": str(event["id"])}, disabled=event["spots"] == 0)

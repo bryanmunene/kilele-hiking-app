@@ -106,7 +106,7 @@ python deployment_check.py
 
 Use only `tests/seed_browser_fixture.py` with a disposable SQLite database for
 browser mutation tests. Never use its fixture account against production.
-`tests/browser_layout.cjs` covers 20 routes at five desktop/mobile widths.
+`tests/browser_layout.cjs` covers 23 routes at five desktop/mobile widths.
 Passing tests verify the covered contracts; they do not establish that external
 providers are authorized or guarantee performance under production load.
 
@@ -117,3 +117,45 @@ After restoring email credentials, Retry email delivery resumes exhausted retrie
 For an application regression, use Render's previous successful deployment;
 schema changes in this release are additive. Never restore the database merely
 to roll back application code.
+
+## Navigation And Bookings
+
+Home.py is the shared navigation entrypoint. Public pages are grouped into
+Explore, My Hikes, Community, and Account. Organizer links are hidden from
+non-admin menus; backend and page authorization still enforce the boundary.
+Existing page URLs remain supported. Trail details link to a specific event;
+sign-in preserves the event selection, and confirmation opens My Hikes.
+
+Only upcoming hikes owned by active administrators are publicly bookable.
+Non-admin personal plans are excluded from public discovery and booking.
+Free registration, cancellation, date validation, and capacity checks live in
+`backend/kilele_core/bookings.py`, used by frontend adapters and API routes.
+Paid checkout shares the date and capacity checks but retains provider verification.
+The unused frontend payment-state writers have been removed.
+
+## Operations Dashboard
+
+Organizer > Operations shows queued and exhausted email retries, open support
+requests, database size, and the latest recorded backup outcome. Backup runs record
+their start and final result in Neon; successful status follows encrypted artifact
+upload and disposable restore validation. Missing status is unknown, not success.
+A last successful backup older than 36 hours is flagged. A runner failure before
+status recording may leave a running/unknown result; consult the linked Actions run.
+Provider dashboards remain authoritative for storage, compute, and bandwidth quotas.
+
+## Browser Regression Checks
+
+Install Node.js 24, pnpm 11.19, and the Python test requirements. Then:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+pnpm exec playwright test
+```
+
+The suite starts a disposable localhost deployment on 8503/8504. Do not point it
+at production. It checks the mobile booking/cancellation/rebooking journey,
+role boundaries, unavailable checkout, delayed asset responses, automated WCAG
+A/AA rules on critical visitor screens, and 115 responsive page/width combinations.
+The PostgreSQL CI test races two users for the final place. These are targeted
+regression checks, not a production load or manual screen-reader certification.

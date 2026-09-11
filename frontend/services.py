@@ -1471,62 +1471,6 @@ def get_user_registrations(user_id: int) -> list:
     return registrations_for(user_id)
 
 
-def create_payment(registration_id: int, user_id: int, amount: float, phone_number: str) -> dict:
-    """Create a payment record"""
-    try:
-        from models import Payment
-        with get_db() as db:
-            payment = Payment(
-                registration_id=registration_id,
-                user_id=user_id,
-                amount=amount,
-                phone_number=phone_number,
-                status="pending"
-            )
-            db.add(payment)
-            db.flush()
-            db.refresh(payment)
-            
-            return {
-                "payment_id": payment.id,
-                "status": payment.status
-            }
-    except Exception as e:
-        return {"error": f"Payment creation failed: {str(e)}"}
-
-
-def update_payment_status(payment_id: int, status: str, transaction_id: str = None, 
-                         checkout_request_id: str = None, merchant_request_id: str = None) -> dict:
-    """Update payment status after M-Pesa response"""
-    try:
-        from models import Payment, HikeRegistration
-        with get_db() as db:
-            payment = db.query(Payment).filter(Payment.id == payment_id).first()
-            if not payment:
-                return {"error": "Payment not found"}
-            
-            payment.status = status
-            if transaction_id:
-                payment.transaction_id = transaction_id
-            if checkout_request_id:
-                payment.checkout_request_id = checkout_request_id
-            if merchant_request_id:
-                payment.merchant_request_id = merchant_request_id
-            payment.updated_at = datetime.utcnow()
-            
-            # Update registration status if payment completed
-            if status == "completed":
-                registration = db.query(HikeRegistration).filter(
-                    HikeRegistration.id == payment.registration_id
-                ).first()
-                if registration:
-                    registration.payment_status = "paid"
-                    registration.status = "confirmed"
-            
-            db.flush()
-            return {"message": "Payment updated successfully"}
-    except Exception as e:
-        return {"error": f"Update failed: {str(e)}"}
 
 
 def get_hike_registrations(planned_hike_id: int) -> list:
