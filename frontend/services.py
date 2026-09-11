@@ -1457,118 +1457,18 @@ def delete_planned_hike(planned_hike_id: int, user_id: int = None, *, admin=Fals
 
 # Hike Registration Services
 def register_for_hike(user_id: int, planned_hike_id: int, phone_number: str) -> dict:
-    """Register a user for an upcoming hike"""
-    try:
-        from models import HikeRegistration, PlannedHike
-        with get_db() as db:
-            # Check if hike exists
-            planned_hike = db.query(PlannedHike).filter(PlannedHike.id == planned_hike_id).with_for_update().first()
-            if not planned_hike:
-                return {"error": "Hike not found"}
-            if planned_hike.status != "planned" or planned_hike.planned_date <= datetime.utcnow():
-                return {"error": "This hike is no longer open for registration"}
-            if (planned_hike.price or 0) > 0:
-                return {"error": "Paid registrations must use the secure checkout service"}
-            
-            # Check if already registered
-            existing = db.query(HikeRegistration).filter(
-                HikeRegistration.planned_hike_id == planned_hike_id,
-                HikeRegistration.user_id == user_id
-            ).first()
-            if existing and existing.status != "cancelled":
-                return {"error": "Already registered for this hike"}
-            
-            # Check capacity
-            if planned_hike.max_participants:
-                current_registrations = db.query(HikeRegistration).filter(
-                    HikeRegistration.planned_hike_id == planned_hike_id,
-                    HikeRegistration.status != "cancelled"
-                ).count()
-                if current_registrations >= planned_hike.max_participants:
-                    return {"error": "Hike is full"}
-            
-            # Create registration
-            registration = existing or HikeRegistration(
-                planned_hike_id=planned_hike_id,
-                user_id=user_id,
-                phone_number=phone_number,
-                status="confirmed" if planned_hike.price == 0 else "pending",
-                payment_status="paid" if planned_hike.price == 0 else "unpaid"
-            )
-            registration.status = "confirmed"
-            registration.payment_status = "paid"
-            registration.phone_number = phone_number
-            db.add(registration)
-            db.flush()
-            db.refresh(registration)
-            from kilele_core.operations import enqueue
-            import uuid
-            trail = db.get(Hike, planned_hike.hike_id)
-            enqueue(db, f"booking:{registration.id}:{uuid.uuid4().hex}", user_id, "booking",
-                {"hike": trail.name, "reference": registration.id})
-            
-            return {
-                "registration_id": registration.id,
-                "status": registration.status,
-                "payment_required": planned_hike.price > 0,
-                "amount": planned_hike.price
-            }
-    except Exception:
-        return {"error": "Registration could not be completed. Please try again."}
+    from booking_service import register_free
+    return register_free(user_id, planned_hike_id, phone_number)
 
 
 def cancel_registration(user_id: int, registration_id: int) -> dict:
-    from models import HikeRegistration, Payment
-    from kilele_core.operations import enqueue
-    import uuid
-    with get_db() as db:
-        registration = db.query(HikeRegistration).filter_by(id=registration_id, user_id=user_id).with_for_update().first()
-        if not registration:
-            return {"error": "Registration not found."}
-        if registration.status == "cancelled":
-            return {"message": "Registration already cancelled."}
-        hike = db.get(PlannedHike, registration.planned_hike_id)
-        if hike.planned_date <= datetime.utcnow():
-            return {"error": "Contact support about a past hike."}
-        if (hike.price or 0) > 0 or db.query(Payment).filter_by(registration_id=registration.id).first():
-            return {"error": "Contact kileleexplorers@gmail.com to reconcile payment and request cancellation/refund."}
-        registration.status = "cancelled"
-        trail = db.get(Hike, hike.hike_id)
-        enqueue(db, f"cancel:{registration.id}:{uuid.uuid4().hex}", user_id, "cancellation",
-            {"hike": trail.name, "reference": registration.id})
-        return {"message": "Registration cancelled. Your place has been released."}
+    from booking_service import cancel
+    return cancel(user_id, registration_id)
 
 
 def get_user_registrations(user_id: int) -> list:
-    """Get all hike registrations for a user"""
-    try:
-        from models import HikeRegistration, PlannedHike, Hike
-        with get_db() as db:
-            registrations = db.query(HikeRegistration).filter(
-                HikeRegistration.user_id == user_id
-            ).order_by(HikeRegistration.created_at.desc()).all()
-            
-            result = []
-            for reg in registrations:
-                planned_hike = db.query(PlannedHike).filter(PlannedHike.id == reg.planned_hike_id).first()
-                if planned_hike:
-                    hike = db.query(Hike).filter(Hike.id == planned_hike.hike_id).first()
-                    result.append({
-                        "registration_id": reg.id,
-                        "planned_hike_id": reg.planned_hike_id,
-                        "phone_number": reg.phone_number or "",
-                        "hike_name": hike.name if hike else "Unknown",
-                        "hike_location": hike.location if hike else "",
-                        "planned_date": planned_hike.planned_date.isoformat(),
-                        "status": reg.status,
-                        "payment_status": reg.payment_status,
-                        "price": planned_hike.price,
-                        "created_at": reg.created_at.isoformat()
-                    })
-            
-            return result
-    except Exception:
-        return []
+    from booking_service import registrations_for
+    return registrations_for(user_id)
 
 
 def create_payment(registration_id: int, user_id: int, amount: float, phone_number: str) -> dict:

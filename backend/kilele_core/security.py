@@ -6,7 +6,7 @@ import bcrypt
 import pyotp
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, delete
 
-metadata = MetaData()
+from .metadata import metadata
 attempts = Table("auth_attempts", metadata,
     Column("key", String(64), primary_key=True),
     Column("count", Integer, nullable=False),

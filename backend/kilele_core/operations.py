@@ -2,7 +2,12 @@
 import secrets
 from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, MetaData, String, Table, Text, and_, delete, or_, select, update
-from .security import metadata
+from .metadata import metadata
+
+operation_runs = Table("operation_runs", metadata,
+    Column("key", String(120), primary_key=True), Column("kind", String(30), nullable=False),
+    Column("status", String(20), nullable=False), Column("started_at", DateTime, nullable=False),
+    Column("finished_at", DateTime), Column("run_url", String(300)))
 
 blocks = Table("user_blocks", metadata,
     Column("user_id", Integer, primary_key=True),

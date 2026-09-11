@@ -418,6 +418,12 @@ NATURE_CSS = """
     [data-testid="stCustomComponentV1"] iframe { max-width: 100%; }
     [data-testid="stTable"] { overflow-x: auto; }
     [data-testid="stForm"] { border-radius: 8px; }
+    .st-key-trail_photo img { max-height: 360px; object-fit: contain; }
+    :is(button, a, input, textarea, select):focus-visible {
+        outline: 3px solid #087eaa !important;
+        outline-offset: 3px !important;
+    }
+    [data-testid="stTopNav"] { letter-spacing: 0; }
     .st-key-auth_form { max-width: 520px; margin-inline: auto; }
 
     @container kilele-page (max-width: 980px) {

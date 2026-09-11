@@ -21,7 +21,8 @@ module.exports = async function checkLayouts(page, baseUrl, outputDir) {
   const results = [];
   const routes = ["", "Profile", "Login", "Map_View", "Messages", "Wearables", "Strava",
     "Plan_Hike", "Register_for_Hikes", "Manage_Hikes", "Hiking_Gear", "Analytics", "Integrations",
-    "Account_and_Support", "Privacy_and_Terms", "2FA_Setup", "Track_Hike", "Emergency_Contacts", "Goals", "Add_Trail"];
+    "Account_and_Support", "Privacy_and_Terms", "2FA_Setup", "Track_Hike", "Emergency_Contacts", "Goals", "Add_Trail",
+    "My_Hikes", "Trail_Details?trail=1", "Operations"];
   for (const route of routes) {
     await page.setViewportSize({width: 1440, height: 1000});
     await page.goto(baseUrl + "/" + route);
@@ -60,7 +61,7 @@ module.exports = async function checkLayouts(page, baseUrl, outputDir) {
       assert.deepEqual(result.overflow, [], result.route + ": controls outside viewport");
       assert.equal(await page.getByTestId("stException").count(), 0, route + ": Streamlit exception");
       if ([1440, 390].includes(width)) {
-        await page.screenshot({path: path.join(outputDir, result.route + "-" + width + ".png")});
+        await page.screenshot({path: path.join(outputDir, result.route.replace(/[^a-zA-Z0-9_-]/g, "_") + "-" + width + ".png")});
       }
     }
   }

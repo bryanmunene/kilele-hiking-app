@@ -122,6 +122,8 @@ app.include_router(payments.router)
 app.include_router(recovery.router)
 app.include_router(integrations.router)
 app.include_router(operations.router)
+from routers import bookings
+app.include_router(bookings.router)
 
 # Mount static files for images
 STATIC_DIR = Path(__file__).resolve().parent / "static"

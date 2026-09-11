@@ -257,8 +257,10 @@ def save_token_to_browser(token: str):
     st.session_state.storage_operation = "write"
     st.session_state.storage_token = token
 
-def restore_session_from_storage():
+def restore_session_from_storage(*, force=False):
     """Use a bidirectional component; components.html cannot return a token."""
+    if st.session_state.get("_navigation_manages_auth") and not force:
+        return
     if st.session_state.get("authenticated") and st.session_state.get("session_token"):
         current = get_user_by_token(st.session_state.session_token)
         if current:

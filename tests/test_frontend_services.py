@@ -17,7 +17,7 @@ class FrontendServiceContractTests(unittest.TestCase):
         database_path = Path(cls.tempdir.name) / "kilele-test.db"
         os.environ["DATABASE_URL"] = f"sqlite:///{database_path.as_posix()}"
         sys.path.insert(0, str(FRONTEND_DIR))
-        for module_name in ["database", "models", "services", "config", "auth", "main", "activity_import", "cloudinary_service"]:
+        for module_name in ["database", "models", "services", "config", "auth", "main", "activity_import", "cloudinary_service", "booking_service", "booking_ui"]:
             sys.modules.pop(module_name, None)
 
         global database, models, services

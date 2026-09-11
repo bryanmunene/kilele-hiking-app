@@ -10,6 +10,10 @@ from models.booking import HikeRegistration, Payment, PlannedHike
 from models.user import User
 from mpesa_service import mpesa_service, normalize_phone, payment_amount
 from rate_limiter import limiter
+from kilele_core.bookings import BookingError, ensure_capacity, lock_open_hike
+from types import SimpleNamespace
+
+booking_models = SimpleNamespace(PlannedHike=PlannedHike, HikeRegistration=HikeRegistration, User=User)
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
@@ -43,9 +47,10 @@ def checkout(request: Request, body: CheckoutRequest, db: Session = Depends(get_
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from None
     # Serialize capacity checks and retries on the same hike across both services.
-    hike = db.query(PlannedHike).filter(PlannedHike.id == body.planned_hike_id).with_for_update().first()
-    if not hike or hike.status != "planned" or hike.planned_date <= datetime.utcnow():
-        raise HTTPException(400, "This hike is no longer open for registration.")
+    try:
+        hike = lock_open_hike(db, booking_models, body.planned_hike_id)
+    except BookingError as exc:
+        raise HTTPException(400, str(exc)) from None
     try:
         amount = payment_amount(hike.price)
     except ValueError as exc:
@@ -59,10 +64,10 @@ def checkout(request: Request, body: CheckoutRequest, db: Session = Depends(get_
             return payment_result(previous, "A payment is already in progress. Check its status before trying again.")
         if previous and previous.status == "completed" and previous.environment == "production":
             raise HTTPException(409, "This payment is already completed.")
-    if not registration or registration.status == "cancelled":
-        count = db.query(HikeRegistration).filter(HikeRegistration.planned_hike_id == hike.id, HikeRegistration.status != "cancelled").count()
-        if hike.max_participants and count >= hike.max_participants:
-            raise HTTPException(409, "This hike is full.")
+    try:
+        ensure_capacity(db, booking_models, hike, registration)
+    except BookingError as exc:
+        raise HTTPException(409, str(exc)) from None
     if not registration:
         registration = HikeRegistration(planned_hike_id=hike.id, user_id=user.id)
         db.add(registration)

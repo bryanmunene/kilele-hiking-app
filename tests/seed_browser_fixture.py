@@ -26,6 +26,10 @@ with get_db() as db:
         db.add(user)
         db.flush()
     trail = db.query(Hike).first()
+    if not db.query(User).filter_by(username="journey_member").first():
+        db.add(User(username="journey_member", email="journey@example.com",
+                    full_name="Journey Test Member", is_admin=False,
+                    hashed_password=hash_password("Kilele-ui-only-47!")))
     if not db.query(PlannedHike).filter_by(user_id=user.id).first():
         for price in [0, 2500]:
             db.add(PlannedHike(user_id=user.id, hike_id=trail.id, planned_date=datetime.utcnow() + timedelta(days=7),

@@ -71,6 +71,93 @@ class IntegrationTests(unittest.TestCase):
                 db.add(m.SessionToken(user_id=user_id, token=token, expires_at=datetime.utcnow() + timedelta(days=1)))
         self.headers = {"X-Session-Token": "test-session"}
 
+    def test_free_booking_is_idempotent_and_cancellation_is_owned(self):
+        m = self.modules
+        with m.database.get_db_context() as db:
+            db.get(m.PlannedHike, self.planned_id).price = 0
+        url = f"/api/v1/bookings/events/{self.planned_id}/register"
+        first = self.client.post(url, headers=self.headers)
+        self.assertEqual(first.status_code, 200, first.text)
+        second = self.client.post(url, headers=self.headers)
+        self.assertTrue(second.json()["duplicate"])
+        ref = first.json()["registration_id"]
+        self.assertEqual(ref, second.json()["registration_id"])
+        mine = self.client.get("/api/v1/bookings/mine", headers=self.headers).json()
+        self.assertEqual(len(mine), 1)
+        self.assertIn("meeting_point", mine[0])
+        self.assertEqual(self.client.post(f"/api/v1/bookings/{ref}/cancel",
+            headers={"X-Session-Token": "other-session"}).status_code, 409)
+        self.assertEqual(self.client.post(f"/api/v1/bookings/{ref}/cancel", headers=self.headers).status_code, 200)
+        self.assertFalse(self.client.post(url, headers=self.headers).json()["duplicate"])
+
+    def test_public_discovery_does_not_expose_personal_plans(self):
+        m = self.modules
+        with m.database.get_db_context() as db:
+            private = m.PlannedHike(user_id=self.ids[1], hike_id=self.ids[2], price=0,
+                planned_date=datetime.utcnow() + timedelta(days=5), notes="private meeting details")
+            db.add(private)
+            db.flush()
+            private_id = private.id
+        response = self.client.get("/api/v1/bookings/events")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([x["id"] for x in response.json()], [self.planned_id])
+        self.assertNotIn("private meeting details", response.text)
+        denied = self.client.post(f"/api/v1/bookings/events/{private_id}/register", headers=self.headers)
+        self.assertEqual(denied.status_code, 409)
+
+    @unittest.skipUnless(os.getenv("TEST_POSTGRES_URL"), "Requires disposable PostgreSQL for real row locks")
+    def test_concurrent_last_place_has_exactly_one_winner(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        m = self.modules
+        with m.database.get_db_context() as db:
+            hike = db.get(m.PlannedHike, self.planned_id)
+            hike.price, hike.max_participants = 0, 1
+        barrier = Barrier(2)
+        def book(token):
+            barrier.wait(timeout=10)
+            return self.client.post(f"/api/v1/bookings/events/{self.planned_id}/register",
+                headers={"X-Session-Token": token})
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(book, ["test-session", "other-session"]))
+        self.assertEqual(sorted(r.status_code for r in results), [200, 409])
+        with m.database.get_db_context() as db:
+            self.assertEqual(db.query(m.HikeRegistration).filter_by(status="confirmed").count(), 1)
+
+    def test_operations_summary_is_admin_only_and_marks_stale_backups(self):
+        from kilele_core.health import record_run
+        from kilele_core.operations import enqueue, operation_runs, submit_report
+        m = self.modules
+        self.assertEqual(self.client.get("/api/v1/admin/operations",
+            headers={"X-Session-Token": "other-session"}).status_code, 403)
+        with m.database.get_db_context() as db:
+            enqueue(db, "test-operation-notice", self.ids[0], "welcome")
+            submit_report(db, self.ids[1], "support", "Please help with my booking.")
+            record_run(db, "backup", "123", "success",
+                "https://github.com/bryanmunene/kilele-hiking-app/actions/runs/123")
+        response = self.client.get("/api/v1/admin/operations", headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["mail"]["pending"], 1)
+        self.assertEqual(response.json()["support"]["open"], 1)
+        self.assertFalse(response.json()["backup"]["stale"])
+        self.assertNotIn("Please help", response.text)
+        with m.database.get_db_context() as db:
+            db.execute(operation_runs.update().values(finished_at=datetime.utcnow() - timedelta(days=2)))
+        self.assertTrue(self.client.get("/api/v1/admin/operations", headers=self.headers).json()["backup"]["stale"])
+
+    def test_mail_test_cannot_choose_an_arbitrary_recipient(self):
+        from unittest.mock import PropertyMock
+        service = self.modules.email_service.email_service
+        with patch.object(type(service), "configured", new_callable=PropertyMock, return_value=True), patch.object(
+                service, "send_email", return_value=True) as send:
+            response = self.client.post("/api/v1/admin/email/test", headers=self.headers,
+                json={"recipient": "unapproved@example.com"})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(send.call_args.args[0], "hiker@example.com")
+            denied = self.client.post("/api/v1/admin/email/test", headers={"X-Session-Token": "other-session"})
+            self.assertEqual(denied.status_code, 403)
+            self.assertEqual(send.call_count, 1)
+
     def test_api_activity_import_is_completed_and_deduplicated(self):
         from models.hike_session import HikeSession
         content = b'''<gpx version="1.1" creator="test"><trk><trkseg>
