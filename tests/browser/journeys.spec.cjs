@@ -19,6 +19,12 @@ async function login(page, username) {
   await idle(page);
 }
 
+async function checkVisibleLabel(page, name) {
+  // React Aria paints the checkbox over a visually hidden native input.
+  await page.getByTestId("stCheckbox").locator("label").filter({hasText: name}).click();
+  await expect(page.getByRole("checkbox", {name, exact: true})).toBeChecked();
+}
+
 test("mobile visitor can sign in, resume a booking, cancel, and rebook", async ({page}) => {
   await page.setViewportSize({width: 390, height: 844});
   await page.goto("/Trail_Details?trail=1");
@@ -37,7 +43,7 @@ test("mobile visitor can sign in, resume a booking, cancel, and rebook", async (
   await page.getByLabel("Password", {exact: true}).first().press("Enter");
   await expect(page.getByText("Signed in as journey_member", {exact: false})).toBeVisible();
   await page.getByRole("link", {name: "Continue booking", exact: false}).click();
-  await page.getByRole("checkbox", {name: "Confirm my place"}).check();
+  await checkVisibleLabel(page, "Confirm my place");
   await page.getByRole("button", {name: "Confirm free booking", exact: false}).click();
   await expect(page.getByText(/Your place is confirmed. Booking reference/)).toBeVisible();
   await expect(page.getByRole("heading", {name: "My hikes", exact: true})).toBeVisible();
@@ -45,13 +51,13 @@ test("mobile visitor can sign in, resume a booking, cancel, and rebook", async (
   await page.reload();
   await expect(page.getByText("Confirmed", {exact: true})).toBeVisible();
   await page.getByText("Cancel my place", {exact: true}).click();
-  await page.getByRole("checkbox", {name: "Cancel this booking"}).check();
+  await checkVisibleLabel(page, "Cancel this booking");
   await page.getByRole("button", {name: "Cancel booking", exact: false}).click();
   await expect(page.getByText("Registration cancelled. Your place has been released.", {exact: true})).toBeVisible();
   await page.getByRole("tab", {name: "Cancelled", exact: true}).click();
   await expect(page.getByText("Cancelled", {exact: true}).last()).toBeVisible();
   await page.goto("/Register_for_Hikes?event=1");
-  await page.getByRole("checkbox", {name: "Confirm my place"}).check();
+  await checkVisibleLabel(page, "Confirm my place");
   await page.getByRole("button", {name: "Confirm free booking", exact: false}).click();
   await expect(page.getByText(/Your place is confirmed. Booking reference/)).toBeVisible();
   await idle(page);
@@ -92,7 +98,8 @@ test("critical visitor pages meet automated WCAG A and AA checks", async ({page}
     await expect(page.locator('[data-testid="stMain"] h1')).toBeVisible();
     await idle(page);
     const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
-    expect(results.violations.map(v => ({id: v.id, help: v.help, nodes: v.nodes.map(n => n.target)}))).toEqual([]);
+    expect(results.violations.map(v => ({route, id: v.id, help: v.help,
+      nodes: v.nodes.map(n => ({target: n.target, summary: n.failureSummary}))}))).toEqual([]);
   }
 });
 

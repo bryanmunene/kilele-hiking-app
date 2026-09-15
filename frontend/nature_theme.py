@@ -83,6 +83,7 @@ NATURE_CSS = """
 
     [data-testid="stMain"] [data-testid="stCaptionContainer"] {
         color: #4d5b53;
+        opacity: 1;
     }
 
     .hero-section, .header-section, .section-panel {
