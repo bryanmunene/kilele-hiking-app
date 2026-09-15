@@ -60,7 +60,7 @@ if latest and latest["run_url"]:
 
 st.divider()
 st.subheader("Support and capacity")
-st.page_link("pages/24_Account_and_Support.py", label="Open organizer inbox", icon=":material/inbox:")
+st.page_link("screens/24_Account_and_Support.py", label="Open organizer inbox", icon=":material/inbox:")
 if support["oldest_open"]:
     st.caption(f"Oldest open request: {support['oldest_open']} UTC")
 size = status["database_bytes"]

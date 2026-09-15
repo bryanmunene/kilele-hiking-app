@@ -81,6 +81,10 @@ NATURE_CSS = """
         color: var(--kilele-forest);
     }
 
+    [data-testid="stMain"] [data-testid="stCaptionContainer"] {
+        color: #4d5b53;
+    }
+
     .hero-section, .header-section, .section-panel {
         background: transparent;
         border: 0;

@@ -6,6 +6,7 @@ const path = require("node:path");
 async function idle(page) {
   await expect(page.locator('[data-testid="stApp"]')).toHaveAttribute("data-test-script-state", "notRunning");
   await expect(page.getByTestId("stException")).toHaveCount(0);
+  await expect(page.getByTestId("stDialog")).toHaveCount(0);
 }
 
 async function login(page, username) {
@@ -20,6 +21,11 @@ async function login(page, username) {
 
 test("mobile visitor can sign in, resume a booking, cancel, and rebook", async ({page}) => {
   await page.setViewportSize({width: 390, height: 844});
+  await page.goto("/Trail_Details?trail=1");
+  await expect(page.getByRole("heading", {name: "Upcoming group hikes"})).toBeVisible();
+  await idle(page);
+  await page.getByRole("link", {name: "All trails", exact: false}).click();
+  await expect(page.getByRole("button", {name: "Find a group hike", exact: false})).toBeVisible();
   await page.goto("/Trail_Details?trail=1");
   await expect(page.getByRole("heading", {name: "Upcoming group hikes"})).toBeVisible();
   await page.getByRole("link", {name: "Review and book", exact: false}).first().click();

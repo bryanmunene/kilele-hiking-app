@@ -7,7 +7,7 @@ from auth import get_current_user
 from booking_service import cancel
 from services import get_trail_equipment
 
-BOOKING_PAGE = "pages/21_🎫_Register_for_Hikes.py"
+BOOKING_PAGE = "screens/21_🎫_Register_for_Hikes.py"
 SUPPORT = "kileleexplorers@gmail.com"
 
 
@@ -38,7 +38,7 @@ def equipment_list(trail_id):
             st.write(f"- {item['item_name']}" + (" (required)" if item.get("is_required") else ""))
     else:
         st.caption("No trail-specific equipment list has been published.")
-    st.page_link("pages/19_🎒_Hiking_Gear.py", label="Equipment catalogue", icon=":material/backpack:")
+    st.page_link("screens/19_🎒_Hiking_Gear.py", label="Equipment catalogue", icon=":material/backpack:")
 
 
 def support_link(reference=None):

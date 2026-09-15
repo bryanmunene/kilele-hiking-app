@@ -113,7 +113,7 @@ if not is_authenticated():
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Go to Login"):
-            st.switch_page("pages/0_🔐_Login.py")
+            st.switch_page("screens/0_🔐_Login.py")
 
 # Sidebar filters
 st.sidebar.header("🔍 Filter Gear")

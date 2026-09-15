@@ -23,7 +23,7 @@ st.markdown("""
 if not is_authenticated():
     st.warning("⚠️ Please log in to manage emergency contacts")
     if st.button("Go to Login"):
-        st.switch_page("pages/0_🔐_Login.py")
+        st.switch_page("screens/0_🔐_Login.py")
     st.stop()
 
 user = get_current_user()

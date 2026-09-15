@@ -55,9 +55,9 @@ with st.container(key="auth_form"):
         user = get_current_user()
         st.success(f"Signed in as {user['username']}")
         if st.session_state.get("strava_callback"):
-            st.page_link("pages/19_🟠_Strava.py", label="Finish connecting Strava")
+            st.page_link("screens/19_🟠_Strava.py", label="Finish connecting Strava")
         if st.session_state.get("booking_return"):
-            st.page_link("pages/21_🎫_Register_for_Hikes.py", label="Continue booking", icon=":material/event_available:",
+            st.page_link("screens/21_🎫_Register_for_Hikes.py", label="Continue booking", icon=":material/event_available:",
                          query_params={"event": str(st.session_state.booking_return)})
         st.page_link("views/explore.py", label="Explore trails", icon=":material/landscape:")
         if st.button("Sign out", icon=":material/logout:"):

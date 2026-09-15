@@ -67,9 +67,9 @@ class DeploymentReadinessTests(unittest.TestCase):
 
     def test_core_pages_do_not_ship_placeholder_workflows(self):
         targets = [
-            ROOT / "frontend" / "pages" / "12_💬_Messages.py",
-            ROOT / "frontend" / "pages" / "19_🎒_Hiking_Gear.py",
-            ROOT / "frontend" / "pages" / "21_🎫_Register_for_Hikes.py",
+            ROOT / "frontend" / "screens" / "12_💬_Messages.py",
+            ROOT / "frontend" / "screens" / "19_🎒_Hiking_Gear.py",
+            ROOT / "frontend" / "screens" / "21_🎫_Register_for_Hikes.py",
             ROOT / "backend" / "mpesa_service.py",
         ]
         forbidden = ["Coming soon", "being migrated", "DEMO123456", "demo_mode"]

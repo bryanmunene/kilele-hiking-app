@@ -10,7 +10,7 @@ st.title("My hikes")
 user = get_current_user()
 if not user:
     st.info("Sign in to view your hikes.")
-    st.page_link("pages/0_🔐_Login.py", label="Sign in", icon=":material/login:")
+    st.page_link("screens/0_🔐_Login.py", label="Sign in", icon=":material/login:")
     st.stop()
 if st.session_state.get("booking_feedback"):
     st.success(st.session_state.pop("booking_feedback"))
@@ -34,7 +34,7 @@ for container, rows in [
             registration_card(registration)
 with personal:
     plans = get_user_planned_hikes(user["id"])
-    st.page_link("pages/20_🗓️_Plan_Hike.py", label="Manage personal plans", icon=":material/event_note:")
+    st.page_link("screens/20_🗓️_Plan_Hike.py", label="Manage personal plans", icon=":material/event_note:")
     for plan in plans:
         st.write(f"**{plan['hike_name']}** | {plan['planned_date'][:10]} | {plan['status'].title()}")
     if not plans:

@@ -323,11 +323,11 @@ def main():
             ["Name", "Distance: low to high", "Distance: high to low", "Duration", "Difficulty"],
         )
         st.markdown("---")
-        st.page_link("pages/1_🗺️_Map_View.py", label="Trail map", icon="🗺️")
+        st.page_link("screens/1_🗺️_Map_View.py", label="Trail map", icon="🗺️")
         if get_current_user() and get_current_user().get("is_admin"):
-            st.page_link("pages/2_➕_Add_Trail.py", label="Add trail", icon=":material/add:")
-        st.page_link("pages/7_⭐_Reviews.py", label="Reviews", icon="⭐")
-        st.page_link("pages/8_🔖_Bookmarks.py", label="Bookmarks", icon="🔖")
+            st.page_link("screens/2_➕_Add_Trail.py", label="Add trail", icon=":material/add:")
+        st.page_link("screens/7_⭐_Reviews.py", label="Reviews", icon="⭐")
+        st.page_link("screens/8_🔖_Bookmarks.py", label="Bookmarks", icon="🔖")
 
     with st.spinner("Loading trails..."):
         hikes = fetch_hikes(difficulty)
@@ -370,10 +370,10 @@ def main():
     action_col1, action_col2, action_col3 = st.columns(3)
     with action_col1:
         if st.button("Open trail map", icon=":material/map:", width="stretch"):
-            st.switch_page("pages/1_🗺️_Map_View.py")
+            st.switch_page("screens/1_🗺️_Map_View.py")
     with action_col2:
         if st.button("Find a group hike", icon=":material/groups:", width="stretch"):
-            st.switch_page("pages/21_🎫_Register_for_Hikes.py")
+            st.switch_page("screens/21_🎫_Register_for_Hikes.py")
     with action_col3:
         if st.button("My upcoming hikes", icon=":material/event:", width="stretch"):
             st.switch_page("views/my_hikes.py")

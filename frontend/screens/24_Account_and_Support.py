@@ -19,8 +19,8 @@ st.write("Kilele Explorers")
 st.markdown("[kileleexplorers@gmail.com](mailto:kileleexplorers@gmail.com)")
 user = get_current_user()
 if not user:
-    st.page_link("pages/0_🔐_Login.py", label="Sign in", icon=":material/login:")
-    st.page_link("pages/25_Privacy_and_Terms.py", label="Privacy and terms", icon=":material/policy:")
+    st.page_link("screens/0_🔐_Login.py", label="Sign in", icon=":material/login:")
+    st.page_link("screens/25_Privacy_and_Terms.py", label="Privacy and terms", icon=":material/policy:")
     st.stop()
 
 account, safety, support = st.tabs(["My account", "Blocked accounts", "Support requests"])
@@ -37,8 +37,8 @@ with account:
             data = export_account(db, actor)
         st.download_button("Download my data", json.dumps(data, default=str, indent=2),
             "kilele-account.json", "application/json", icon=":material/download:")
-    st.page_link("pages/6_🔐_2FA_Setup.py", label="Authenticator settings", icon=":material/security:")
-    st.page_link("pages/25_Privacy_and_Terms.py", label="Privacy and terms", icon=":material/policy:")
+    st.page_link("screens/6_🔐_2FA_Setup.py", label="Authenticator settings", icon=":material/security:")
+    st.page_link("screens/25_Privacy_and_Terms.py", label="Privacy and terms", icon=":material/policy:")
     with st.expander("Delete account"):
         st.warning("This permanently removes your profile, private hike records and contacts, and anonymizes your posts. Limited booking/payment records remain for reconciliation. Cancel upcoming hikes you organize first. Backups may retain older records until they expire.")
         with st.form("delete_account"):

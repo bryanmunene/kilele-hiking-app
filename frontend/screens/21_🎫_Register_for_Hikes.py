@@ -53,7 +53,7 @@ st.subheader("Confirm your place")
 if not user:
     st.session_state.booking_return = event_id
     st.info("Sign in to continue with this booking.")
-    st.page_link("pages/0_🔐_Login.py", label="Sign in to book", icon=":material/login:")
+    st.page_link("screens/0_🔐_Login.py", label="Sign in to book", icon=":material/login:")
     st.stop()
 
 existing = next((r for r in registrations_for(user["id"])

@@ -27,7 +27,7 @@ restore_session_from_storage()
 # Check authentication
 if not is_authenticated():
     st.warning("⚠️ Please login to view your social feed")
-    st.switch_page("pages/0_🔐_Login.py")
+    st.switch_page("screens/0_🔐_Login.py")
     st.stop()
 
 # Helper functions
@@ -116,7 +116,7 @@ with st.sidebar:
     else:
         st.info("You're not following anyone yet")
         if st.button("Find Users to Follow"):
-            st.switch_page("pages/11_👥_Social.py")
+            st.switch_page("screens/11_👥_Social.py")
 
 # Main feed
 activities = fetch_activity_feed()
@@ -133,7 +133,7 @@ if not activities:
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         if st.button("Find Hikers to Follow", width="stretch"):
-            st.switch_page("pages/11_👥_Social.py")
+            st.switch_page("screens/11_👥_Social.py")
 else:
     # Filter options
     col1, col2 = st.columns([2, 1])
@@ -200,12 +200,12 @@ else:
                 elif activity['activity_type'] == 'review' and activity.get('hike_name'):
                     st.markdown(f"**Trail:** {activity['hike_name']}")
                     if st.button(f"Read Review", key=f"review_{activity['id']}", type="secondary"):
-                        st.switch_page("pages/7_⭐_Reviews.py")
+                        st.switch_page("screens/7_⭐_Reviews.py")
                 
                 elif activity['activity_type'] == 'achievement':
                     st.markdown("🎉 *Congratulations!*")
                     if st.button(f"View Achievements", key=f"achievement_{activity['id']}", type="secondary"):
-                        st.switch_page("pages/10_🏆_Achievements.py")
+                        st.switch_page("screens/10_🏆_Achievements.py")
                 
                 elif activity['activity_type'] == 'bookmark' and activity.get('hike_name'):
                     st.markdown(f"**Trail:** {activity['hike_name']}")
@@ -227,7 +227,7 @@ with col1:
     </div>
     """, unsafe_allow_html=True)
     if st.button("Find Hikers", width="stretch"):
-        st.switch_page("pages/11_👥_Social.py")
+        st.switch_page("screens/11_👥_Social.py")
 
 with col2:
     st.markdown("""
@@ -237,7 +237,7 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
     if st.button("Write Review", width="stretch"):
-        st.switch_page("pages/7_⭐_Reviews.py")
+        st.switch_page("screens/7_⭐_Reviews.py")
 
 with col3:
     st.markdown("""
@@ -247,4 +247,4 @@ with col3:
     </div>
     """, unsafe_allow_html=True)
     if st.button("View Achievements", width="stretch"):
-        st.switch_page("pages/10_🏆_Achievements.py")
+        st.switch_page("screens/10_🏆_Achievements.py")

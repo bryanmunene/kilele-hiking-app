@@ -29,7 +29,7 @@ restore_session_from_storage()
 # Check authentication
 if not is_authenticated():
     st.warning("⚠️ Please login to view your bookmarks")
-    st.switch_page("pages/0_🔐_Login.py")
+    st.switch_page("screens/0_🔐_Login.py")
     st.stop()
 
 # Helper functions
@@ -227,7 +227,7 @@ with tab1:
                     # Action buttons
                     if st.button("🗺️ View", key=f"view_{bookmark['id']}", width="stretch"):
                         st.session_state['selected_trail'] = hike
-                        st.switch_page("pages/1_🗺️_Map_View.py")
+                        st.switch_page("screens/1_🗺️_Map_View.py")
                     
                     if st.button("🗑️ Remove", key=f"remove_{bookmark['id']}", width="stretch", type="secondary"):
                         if remove_bookmark(bookmark['id']):

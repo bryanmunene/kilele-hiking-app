@@ -165,7 +165,7 @@ class FrontendServiceContractTests(unittest.TestCase):
         services.register_for_hike(guest, hike, "254700000000")
         with database.get_db() as db:
             db.add(models.SessionToken(user_id=owner, token="admin-ui-test", expires_at=datetime.utcnow() + timedelta(days=1)))
-        page = next((FRONTEND_DIR / "pages").glob("22_*.py"))
+        page = next((FRONTEND_DIR / "screens").glob("22_*.py"))
         app = AppTest.from_file(str(page), default_timeout=30)
         app.session_state["session_token"] = "admin-ui-test"
         app.run()

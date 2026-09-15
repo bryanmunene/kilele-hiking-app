@@ -20,7 +20,7 @@ if "error" in st.query_params:
 
 if not is_authenticated():
     st.info("Sign in to connect your Strava account.")
-    st.page_link("pages/0_🔐_Login.py", label="Sign in", icon="🔐")
+    st.page_link("screens/0_🔐_Login.py", label="Sign in", icon="🔐")
     st.stop()
 
 if st.session_state.get("strava_callback"):
@@ -98,4 +98,4 @@ elif stats.get("configured"):
 else:
     st.info("Strava connection is not available yet. Activity-file imports are available.")
 
-st.page_link("pages/13_⌚_Wearables.py", label="Import an activity file", icon=":material/upload_file:")
+st.page_link("screens/13_⌚_Wearables.py", label="Import an activity file", icon=":material/upload_file:")

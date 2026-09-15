@@ -30,7 +30,7 @@ st.subheader("Upcoming group hikes")
 events = upcoming_events(trail_id=trail_id)
 if not events:
     st.info("No upcoming group hikes have been published for this trail.")
-    st.page_link("pages/20_🗓️_Plan_Hike.py", label="Plan a personal hike", icon=":material/event_note:")
+    st.page_link("screens/20_🗓️_Plan_Hike.py", label="Plan a personal hike", icon=":material/event_note:")
 for event in events:
     with st.container(border=True, key=f"event_card_{event['id']}"):
         event_summary(event)

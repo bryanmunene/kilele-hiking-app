@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -12,7 +13,9 @@ class NavigationTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         paths = {entry[0] for rows in module.GROUPS.values() for entry in rows}
-        legacy = {"pages/" + p.name for p in (ROOT / "frontend/pages").glob("*.py")}
+        self.assertFalse((ROOT / "frontend/pages").exists(), "Legacy autodiscovery breaks cold-start deep links")
+        legacy = {"screens/" + p.name for p in (ROOT / "frontend/screens").glob("*.py")}
+        self.assertTrue(legacy)
         self.assertTrue(legacy <= paths)
         self.assertTrue(all((ROOT / "frontend" / p).is_file() for p in paths))
         routes = [entry[2] for rows in module.GROUPS.values() for entry in rows]
@@ -28,7 +31,8 @@ class NavigationTests(unittest.TestCase):
         import requests
         spec = importlib.util.spec_from_file_location("test_api_adapter", ROOT / "frontend/api_client.py")
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        with patch.object(sys, "path", [str(ROOT / "frontend"), *sys.path]):
+            spec.loader.exec_module(module)
         with patch.object(module.requests, "request", side_effect=requests.Timeout("private provider details")) as send:
             result = module.api_request("GET", "/api/v1/admin/operations")
         self.assertIn("try again", result["error"].lower())

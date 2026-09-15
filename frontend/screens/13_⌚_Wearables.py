@@ -13,7 +13,7 @@ st.title("Activities")
 
 if not is_authenticated():
     st.info("Sign in to import your activities.")
-    st.page_link("pages/0_🔐_Login.py", label="Sign in", icon="🔐")
+    st.page_link("screens/0_🔐_Login.py", label="Sign in", icon="🔐")
     st.stop()
 
 upload_tab, history_tab = st.tabs(["Import", "Imported activities"])

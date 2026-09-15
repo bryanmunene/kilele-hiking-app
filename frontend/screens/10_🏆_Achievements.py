@@ -50,7 +50,7 @@ st.markdown("""
 # Check authentication
 if not is_authenticated():
     st.warning("⚠️ Please login to view your achievements")
-    st.switch_page("pages/0_🔐_Login.py")
+    st.switch_page("screens/0_🔐_Login.py")
     st.stop()
 
 # Helper functions

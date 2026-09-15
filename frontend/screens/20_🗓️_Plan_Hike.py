@@ -81,7 +81,7 @@ st.markdown("""
 if not is_authenticated():
     st.warning("⚠️ Please login to plan hikes")
     if st.button("Go to Login"):
-        st.switch_page("pages/0_🔐_Login.py")
+        st.switch_page("screens/0_🔐_Login.py")
     st.stop()
 
 user = get_current_user()
@@ -104,7 +104,7 @@ with tab1:
         all_hikes = get_all_hikes()
         if not all_hikes:
             st.info("No trails are available yet. Add a trail first, then come back to schedule it.")
-            st.page_link("pages/2_➕_Add_Trail.py", label="Add Trail")
+            st.page_link("screens/2_➕_Add_Trail.py", label="Add Trail")
             st.stop()
 
         hike_options = {f"{h['name']} - {h['location']}": h['id'] for h in all_hikes}
